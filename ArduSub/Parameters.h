@@ -199,6 +199,7 @@ public:
         k_param_compass_enabled_deprecated,
         k_param_surface_depth,
         k_param_rc_speed, // Main output pwm frequency
+        k_param_manual_slew_rate, // manual mode motors mixer slew rate
         k_param_gcs_pid_mask = 178,
         k_param_throttle_filt,
         k_param_throttle_deadzone, // Used in auto-throttle modes
@@ -285,6 +286,7 @@ public:
     AP_Int16        gcs_pid_mask;
 
     AP_Int16        rc_speed; // speed of fast RC Channels in Hz
+    AP_Int16        manual_slew_rate;
 
     AP_Float        gain_default;
     AP_Float        maxGain;
