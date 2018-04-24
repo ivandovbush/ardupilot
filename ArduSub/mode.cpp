@@ -1,4 +1,5 @@
 #include "Sub.h"
+#include "AP_HAL/AP_HAL.h"
 
 /*
   constructor for Mode object
@@ -156,6 +157,7 @@ bool Sub::set_mode(const uint8_t new_mode, const ModeReason reason)
 void Sub::update_flight_mode()
 {
     flightmode->run();
+    last_control_mode_update_us = AP_HAL:micros();
 }
 
 // exit_mode - high level call to organise cleanup as a flight mode is exited
