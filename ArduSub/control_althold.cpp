@@ -93,6 +93,17 @@ void Sub::althold_run()
             float target_climb_rate = get_surface_tracking_climb_rate(0, pos_control.get_alt_target(), G_Dt);
             pos_control.set_alt_target_from_climb_rate_ff(target_climb_rate, G_Dt, false);
         }
+
+        if (fabsf(inertial_nav.get_velocity_z()) > 30) {
+            // extimate next Z
+            float next_z = inertial_nav.get_altitude() + inertial_nav.get_velocity_z()*0.01;
+            // Is it likely going to overshoot?
+            if ((pos_control.get_alt_target() - next_z)*inertial_nav.get_velocity_z() < 0)
+            {
+                pos_control.set_alt_target(pos_control.get_alt_target() + 0.02 * inertial_nav.get_velocity_z());
+            }
+        }
+
         pos_control.update_z_controller();
     }
 
