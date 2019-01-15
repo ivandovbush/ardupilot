@@ -123,6 +123,29 @@ class AutoTestSub(AutoTest):
         self.disarm_vehicle()
         self.progress("Manual dive OK")
 
+    def depth_test(self):
+
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        while(True):
+            self.set_rc(3, 1300)
+
+            self.wait_altitude(-10, -8)
+
+
+            self.set_rc(3, 1500)
+            self.change_mode('ALT_HOLD')
+            self.wait_seconds(15)
+
+            self.set_rc(3, 1700)
+            self.wait_altitude(-2,-1)
+            self.set_rc(3, 1500)
+            self.wait_seconds(15)
+
+        self.disarm_vehicle()
+        self.progress("Manual dive OK")
+
     def dive_mission(self, filename):
         self.progress("Executing mission %s" % filename)
         self.load_mission(filename)
@@ -178,6 +201,7 @@ class AutoTestSub(AutoTest):
         ret = super(AutoTestSub, self).tests()
 
         ret.extend([
+            ("DepthTest", "Depth test", self.depth_test),
             ("ArmFeatures", "Arm features", self.test_arm_feature),
 
             ("DiveManual", "Dive manual", self.dive_manual),
