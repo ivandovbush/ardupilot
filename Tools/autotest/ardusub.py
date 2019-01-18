@@ -92,6 +92,38 @@ def dive_mission(mavproxy, mav, filename):
     print("Mission OK")
     return True
 
+def depth_test(mavproxy, mav):
+    print("depth test")
+    while(True):
+
+        mavproxy.send('mode ALT_HOLD\n')
+        wait_mode(mav, 'ALT_HOLD')
+
+        mavproxy.send('rc 3 1300\n')
+        #self.set_rc(3, 1300)
+
+        wait_altitude(mav, -10, -8)
+
+
+        #self.set_rc(3, 1500)
+        mavproxy.send('rc 3 1500\n')
+
+        wait_seconds(mav, 15)
+
+        #self.set_rc(3, 1700)
+        mavproxy.send('rc 3 1700\n')
+
+        wait_altitude(mav, -2,-1)
+
+        mavproxy.send('rc 3 1500\n')
+        #self.set_rc(3, 1500)
+
+        wait_seconds(mav, 15)
+
+    self.disarm_vehicle()
+    self.progress("Manual dive OK")
+
+
 def dive_ArduSub(binary, viewerip=None, use_map=False, valgrind=False, gdb=False):
     """Dive ArduSub in SITL.
 
@@ -169,6 +201,9 @@ def dive_ArduSub(binary, viewerip=None, use_map=False, valgrind=False, gdb=False
         print("Home location: %s" % homeloc)
         if not arm_sub(mavproxy, mav):
             print("Failed to ARM")
+            failed = True
+        if not depth_test(mavproxy, mav):
+            print("Failed depth test")
             failed = True
         if not dive_manual(mavproxy, mav):
             print("Failed manual dive")
