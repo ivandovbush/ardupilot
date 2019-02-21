@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import abc
 import math
-import itertools
 import os
 import re
 import shutil
@@ -11,6 +10,11 @@ import time
 import traceback
 import pexpect
 import fnmatch
+
+try:  # Python2 needs importing
+    from itertools import izip as zip
+except ImportError: # zip doesn't need to be imported in python3
+    pass
 
 from pymavlink import mavwp, mavutil
 from pysim import util, vehicleinfo
@@ -476,7 +480,7 @@ class AutoTest(ABC):
         self.progress("Comparing (%s) and (%s)" % (file1, file2, ))
         f1 = open(file1)
         f2 = open(file2)
-        for l1, l2 in itertools.izip(f1, f2):
+        for l1, l2 in zip(f1, f2):
             if l1 == l2:
                 # e.g. the first "QGC WPL 110" line
                 continue
@@ -489,7 +493,7 @@ class AutoTest(ABC):
             fields2 = re.split("\s+", l2)
             # line = int(fields1[0])
             t = int(fields1[3]) # mission item type
-            for (count, (i1, i2)) in enumerate(itertools.izip(fields1, fields2)):
+            for (count, (i1, i2)) in enumerate(zip(fields1, fields2)):
                 if count == 2: # frame
                     if t in [mavutil.mavlink.MAV_CMD_DO_CHANGE_SPEED,
                              mavutil.mavlink.MAV_CMD_CONDITION_YAW,

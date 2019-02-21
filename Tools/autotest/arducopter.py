@@ -344,7 +344,6 @@ class AutoTestCopter(AutoTest):
             self.fail_list.append("save_mission_to_file")
             self.progress("save_mission_to_file failed")
 
-        global num_wp
         self.progress("test: Fly a mission from 1 to %u" % num_wp)
         self.mavproxy.send('wp set 1\n')
         self.change_mode('AUTO')
