@@ -251,6 +251,7 @@ void Sub::guided_set_angle(const Quaternion &q, float climb_rate_cms)
     guided_angle_state.roll_cd = ToDeg(guided_angle_state.roll_cd) * 100.0f;
     guided_angle_state.pitch_cd = ToDeg(guided_angle_state.pitch_cd) * 100.0f;
     guided_angle_state.yaw_cd = wrap_180_cd(ToDeg(guided_angle_state.yaw_cd) * 100.0f);
+    printf("target_roll: %f, target_pitch: %f, target_yaw: %f\n", guided_angle_state.roll_cd, guided_angle_state.pitch_cd, guided_angle_state.yaw_cd);
 
     guided_angle_state.climb_rate_cms = climb_rate_cms;
     guided_angle_state.update_time_ms = AP_HAL::millis();
@@ -509,6 +510,10 @@ void Sub::guided_angle_control_run()
     // call position controller
     pos_control.set_alt_target_from_climb_rate_ff(climb_rate_cms, G_Dt, false);
     pos_control.update_z_controller();
+    if(abs(pitch_in) > 0.001) {
+        printf("%.1f,\t %.1f\n", pitch_in, roll_in);
+    }
+    
 }
 
 // Guided Limit code

@@ -61,10 +61,11 @@ void Sub::althold_run()
             target_pitch,
             target_yaw
         );
+        
         target_roll = degrees(target_roll);
         target_pitch = degrees(target_pitch);
         target_yaw = degrees(target_yaw);
-
+        printf("%.1f, %.1f\n", target_pitch, target_roll);
         attitude_control.input_euler_angle_roll_pitch_yaw(target_roll * 1e2f, target_pitch * 1e2f, target_yaw * 1e2f, true);
         return;
     }

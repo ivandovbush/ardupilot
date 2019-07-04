@@ -1,6 +1,7 @@
 #include "AC_AttitudeControl_Sub.h"
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
+#define D2R DEG_TO_RAD_DOUBLE
 
 // table of user settable parameters
 const AP_Param::GroupInfo AC_AttitudeControl_Sub::var_info[] = {
@@ -211,8 +212,11 @@ void AC_AttitudeControl_Sub::set_throttle_out(float throttle_in, bool apply_angl
         // Clear angle_boost for logging purposes
         _angle_boost = 0.0f;
     }
-    _motors.set_throttle(throttle_in);
+    _motors.set_throttle(throttle_in*cosf(_ahrs.pitch_sensor*D2R/100)*cosf(_ahrs.roll_sensor*D2R/100));
     _motors.set_throttle_avg_max(get_throttle_avg_max(MAX(throttle_in, _throttle_in)));
+
+    _motors.set_lateral(throttle_in*sinf(_ahrs.roll_sensor*D2R/100));
+    _motors.set_forward(throttle_in*sinf(_ahrs.pitch_sensor*D2R/100));
 }
 
 // returns a throttle including compensation for roll/pitch angle
