@@ -3,9 +3,11 @@
 # Dive ArduSub in SITL
 from __future__ import print_function
 import os
+from math import radians
 
 import pexpect
 from pymavlink import mavutil
+from pymavlink.quaternion import QuaternionBase
 
 from pysim import util
 
@@ -76,6 +78,31 @@ class AutoTestSub(AutoTest):
         self.disarm_vehicle()
         self.progress("Manual dive OK")
 
+    def depth_hold(self):
+        print("TESTING DEPTH HOLD")
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        self.mavproxy.send('mode ALT_HOLD\n')
+        self.wait_mode('ALT_HOLD')
+
+        self.set_rc(Joystick.Throttle, 1100)
+        self.set_rc(Joystick.Forward, 1500)
+        self.set_rc(Joystick.Lateral, 1550)
+
+        self.wait_altitude(-15, -10, timeout=200)
+        self.set_rc(Joystick.Throttle, 1500)
+
+        self.wait_seconds(20)
+
+        # should still be at a valid depth
+        self.wait_altitude(-15, -10, timeout=5)
+
+        for i in range(50):
+            self.dive_set_attitude_target(0, radians(90), 0)
+            self.wait_seconds(0.4)
+        self.wait_altitude(-15, -10, timeout=1)
+
     def dive_mission(self, filename):
         self.progress("Executing mission %s" % filename)
         self.load_mission(filename)
@@ -116,6 +143,16 @@ class AutoTestSub(AutoTest):
         self.context_pop()
         if ex is not None:
             raise ex
+
+    def dive_set_attitude_target(self, roll, pitch, yaw):
+        self.mav.mav.set_attitude_target_send(
+        0,
+        0, 0,
+        1<<6,
+        QuaternionBase([roll, pitch, yaw]), # -> attitude quaternion (w, x, y, z | zero-rotation is 1, 0, 0, 0)
+        0, #roll rate
+        0, #pitch rate
+        0, 0)    # yaw rate, thrust
 
     def dive_set_position_target(self):
         self.change_mode('GUIDED')
@@ -175,6 +212,7 @@ class AutoTestSub(AutoTest):
         ret = super(AutoTestSub, self).tests()
 
         ret.extend([
+            ("DepthHold", "Depth Hold", self.depth_hold),
             ("DiveManual", "Dive manual", self.dive_manual),
 
             ("DiveMission",
