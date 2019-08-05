@@ -202,17 +202,14 @@ void AC_AttitudeControl_Sub::update_althold_lean_angle_max(float throttle_in)
 void AC_AttitudeControl_Sub::set_throttle_out(float throttle_in, bool apply_angle_boost, float filter_cutoff)
 {
     _throttle_in = throttle_in;
-    update_althold_lean_angle_max(throttle_in);
+    float remapped_throttle = (throttle_in * 2) - 1; // map from [0,1] to [-1,1]
+    Vector3f throttle_vehicle_frame = _ahrs.get_rotation_body_to_ned() * Vector3f(0, 0, remapped_throttle);
     _motors.set_throttle_filter_cutoff(filter_cutoff);
-    if (apply_angle_boost) {
-        // Apply angle boost
-        throttle_in = get_throttle_boosted(throttle_in);
-    }else{
-        // Clear angle_boost for logging purposes
-        _angle_boost = 0.0f;
-    }
-    _motors.set_throttle(throttle_in);
+    
+    _motors.set_throttle(0.5 + throttle_vehicle_frame.z/2); //remap to [0,1]
     _motors.set_throttle_avg_max(get_throttle_avg_max(MAX(throttle_in, _throttle_in)));
+    _motors.set_lateral(_motors.get_lateral() + throttle_vehicle_frame.y);
+    _motors.set_forward(_motors.get_forward() + throttle_vehicle_frame.x);
 }
 
 // returns a throttle including compensation for roll/pitch angle
