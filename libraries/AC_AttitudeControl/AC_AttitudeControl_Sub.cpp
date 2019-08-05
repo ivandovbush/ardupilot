@@ -1,6 +1,7 @@
 #include "AC_AttitudeControl_Sub.h"
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
+#include <stdio.h>
 #define D2R DEG_TO_RAD_DOUBLE
 
 // table of user settable parameters
@@ -203,20 +204,17 @@ void AC_AttitudeControl_Sub::update_althold_lean_angle_max(float throttle_in)
 void AC_AttitudeControl_Sub::set_throttle_out(float throttle_in, bool apply_angle_boost, float filter_cutoff)
 {
     _throttle_in = throttle_in;
-    update_althold_lean_angle_max(throttle_in);
+    // update_althold_lean_angle_max(throttle_in);
     _motors.set_throttle_filter_cutoff(filter_cutoff);
-    if (apply_angle_boost) {
-        // Apply angle boost
-        throttle_in = get_throttle_boosted(throttle_in);
-    }else{
-        // Clear angle_boost for logging purposes
-        _angle_boost = 0.0f;
-    }
-    _motors.set_throttle(throttle_in*cosf(_ahrs.pitch_sensor*D2R/100)*cosf(_ahrs.roll_sensor*D2R/100));
+    
+    _motors.set_throttle(0.5 + 0.5*((throttle_in - 0.5)*cosf(_ahrs.pitch_sensor*D2R/100)*cosf(_ahrs.roll_sensor*D2R/100)));
+    printf("throttle: %f\n", _motors.get_throttle());
     _motors.set_throttle_avg_max(get_throttle_avg_max(MAX(throttle_in, _throttle_in)));
-
-    _motors.set_lateral(throttle_in*sinf(_ahrs.roll_sensor*D2R/100));
-    _motors.set_forward(throttle_in*sinf(_ahrs.pitch_sensor*D2R/100));
+    // printf("throttle: %f\n", _motors.get_throttle());
+    // printf("sinroll: %f, \t sinpitch: %f\n", sinf(_ahrs.roll_sensor*D2R/100), sinf(_ahrs.pitch_sensor*D2R/100));
+    printf("lateral: %f\n", _motors.get_lateral());
+    _motors.set_lateral(_motors.get_lateral() - (throttle_in-0.5)*sinf(_ahrs.roll_sensor*D2R/100));
+    _motors.set_forward(_motors.get_forward() + (throttle_in-0.5)*sinf(_ahrs.pitch_sensor*D2R/100));
 }
 
 // returns a throttle including compensation for roll/pitch angle

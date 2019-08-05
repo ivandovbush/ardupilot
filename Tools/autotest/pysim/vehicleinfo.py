@@ -243,7 +243,7 @@ class VehicleInfo(object):
             },
             "vectored_6dof": {
                 "waf_target": "bin/ardusub",
-                "default_params_filename": "default_params/sub.parm",
+                "default_params_filename": "default_params/sub6dof.parm",
             },
             "gazebo-bluerov2": {
                 "waf_target": "bin/ardusub",

@@ -65,8 +65,11 @@ void Sub::althold_run()
         target_roll = degrees(target_roll);
         target_pitch = degrees(target_pitch);
         target_yaw = degrees(target_yaw);
-        printf("%.1f, %.1f\n", target_pitch, target_roll);
+        //printf("%.1f, %.1f\n", target_pitch, target_roll);
         attitude_control.input_euler_angle_roll_pitch_yaw(target_roll * 1e2f, target_pitch * 1e2f, target_yaw * 1e2f, true);
+        motors.set_forward(channel_forward->norm_input());
+        motors.set_lateral(channel_lateral->norm_input());
+        pos_control.update_z_controller();
         return;
     }
 
@@ -127,10 +130,10 @@ void Sub::althold_run()
             engageStopZ = false;
             pos_control.relax_alt_hold_controllers();
         }
-
+        motors.set_forward(channel_forward->norm_input());
+        motors.set_lateral(channel_lateral->norm_input());
         pos_control.update_z_controller();
     }
 
-    motors.set_forward(channel_forward->norm_input());
-    motors.set_lateral(channel_lateral->norm_input());
+
 }

@@ -68,8 +68,8 @@ protected:
         float buoyancy_acceleration = GRAVITY_MSS + net_buoyancy/weight;
 
         // Frame drag coefficient
-        const Vector3f linear_drag_coefficient = Vector3f(0.2, 0.3, 0.4);
-        const Vector3f angular_drag_coefficient = Vector3f(1, 1, 1);
+        const Vector3f linear_drag_coefficient = Vector3f(2, 3, 4);
+        const Vector3f angular_drag_coefficient = Vector3f(5, 5, 5);
         // Calculate total volume from water buoyancy
         // $ V = F_b / (rho * g) $
         // V = volume (m^3), rho = water density (kg/m^3), g = gravity (m/s^2), F_b = force (N)
