@@ -65,6 +65,6 @@ void Sub::stabilize_run()
 
     //control_in is range -1000-1000
     //radio_in is raw pwm value
-    motors.set_forward(channel_forward->norm_input());
-    motors.set_lateral(channel_lateral->norm_input());
+    motors.set_forward_FLU(channel_forward->norm_input());
+    motors.set_lateral_FLU(channel_lateral->norm_input());
 }

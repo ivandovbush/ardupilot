@@ -488,7 +488,7 @@ void AP_Motors6DOF::output_armed_stabilizing_vectored_6dof()
 
     AP_AHRS &ahrs = AP::ahrs();
 
-    Vector3f thrust_local_frame = ahrs.get_rotation_body_to_ned() * Vector3f(get_forward(), get_lateral(), get_throttle_bidirectional());
+    Vector3f thrust_local_frame = ahrs.get_rotation_body_to_ned().transposed() *  Vector3f(_forward_in, _lateral_in, get_throttle_bidirectional());
 
 
     throttle_thrust = thrust_local_frame.z + get_throttle_FLU();

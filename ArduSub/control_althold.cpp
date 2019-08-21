@@ -66,6 +66,9 @@ void Sub::althold_run()
         target_yaw = degrees(target_yaw);
 
         attitude_control.input_euler_angle_roll_pitch_yaw(target_roll * 1e2f, target_pitch * 1e2f, target_yaw * 1e2f, true);
+        motors.set_forward_FLU(channel_forward->norm_input());
+        motors.set_lateral_FLU(channel_lateral->norm_input());
+        pos_control.update_z_controller();
         return;
     }
 
@@ -101,7 +104,10 @@ void Sub::althold_run()
     // Get last user velocity direction to check for zero derivative points
     static bool lastVelocityZWasNegative = false;
     if (fabsf(channel_throttle->norm_input()-0.5f) > 0.05f) { // Throttle input above 5%
+        motors.set_forward_FLU(channel_forward->norm_input());
+        motors.set_lateral_FLU(channel_lateral->norm_input());
         // output pilot's throttle
+        motors.set_throttle_FLU(channel_throttle->norm_input());
         attitude_control.set_throttle_out(channel_throttle->norm_input(), false, g.throttle_filt);
         // reset z targets to current values
         pos_control.relax_alt_hold_controllers();
@@ -126,10 +132,8 @@ void Sub::althold_run()
             engageStopZ = false;
             pos_control.relax_alt_hold_controllers();
         }
-
+        motors.set_forward_FLU(channel_forward->norm_input());
+        motors.set_lateral_FLU(channel_lateral->norm_input());
         pos_control.update_z_controller();
     }
-
-    motors.set_forward(channel_forward->norm_input());
-    motors.set_lateral(channel_lateral->norm_input());
 }

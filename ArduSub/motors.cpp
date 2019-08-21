@@ -239,14 +239,15 @@ bool Sub::handle_do_motor_test(mavlink_command_long_t command) {
 // translate wpnav roll/pitch outputs to lateral/forward
 void Sub::translate_wpnav_rp(float &lateral_out, float &forward_out)
 {
-    // get roll and pitch targets in centidegrees
+    // // get roll and pitch targets in centidegrees
     int32_t lateral = wp_nav.get_roll();
     int32_t forward = -wp_nav.get_pitch(); // output is reversed
 
+    Vector3f bodyframe = ahrs.get_rotation_body_to_ned().transposed() * Vector3f(-wp_nav.get_pitch(), wp_nav.get_roll(), 0);
     // constrain target forward/lateral values
     // The outputs of wp_nav.get_roll and get_pitch should already be constrained to these values
-    lateral = constrain_int16(lateral, -aparm.angle_max, aparm.angle_max);
-    forward = constrain_int16(forward, -aparm.angle_max, aparm.angle_max);
+    lateral = constrain_int16(bodyframe.y, -aparm.angle_max, aparm.angle_max);
+    forward = constrain_int16(bodyframe.x, -aparm.angle_max, aparm.angle_max);
 
     // Normalize
     lateral_out = (float)lateral/(float)aparm.angle_max;
