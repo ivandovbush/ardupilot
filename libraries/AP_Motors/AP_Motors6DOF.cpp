@@ -19,6 +19,7 @@
 
 #include <AP_BattMonitor/AP_BattMonitor.h>
 #include <AP_HAL/AP_HAL.h>
+#include <AP_AHRS/AP_AHRS.h>
 #include "AP_Motors6DOF.h"
 
 extern const AP_HAL::HAL& hal;
@@ -484,9 +485,15 @@ void AP_Motors6DOF::output_armed_stabilizing_vectored_6dof()
     roll_thrust = _roll_in;
     pitch_thrust = _pitch_in;
     yaw_thrust = _yaw_in;
-    throttle_thrust = get_throttle_bidirectional();
-    forward_thrust = _forward_in;
-    lateral_thrust = _lateral_in;
+
+    AP_AHRS &ahrs = AP::ahrs();
+
+    Vector3f thrust_local_frame = ahrs.get_rotation_body_to_ned() * Vector3f(get_forward(), get_lateral(), get_throttle_bidirectional());
+
+
+    throttle_thrust = thrust_local_frame.z + get_throttle_FLU();
+    forward_thrust = thrust_local_frame.x + get_forward_FLU();
+    lateral_thrust = thrust_local_frame.y + get_lateral_FLU();
 
     float rpt_out[AP_MOTORS_MAX_NUM_MOTORS]; // buffer so we don't have to multiply coefficients multiple times.
     float yfl_out[AP_MOTORS_MAX_NUM_MOTORS]; // 3 linear DOF mix for each motor

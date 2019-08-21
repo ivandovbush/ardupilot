@@ -41,6 +41,16 @@ public:
     // output_to_motors - sends minimum values out to the motors
     void output_to_motors() override;
 
+    // Motor inputs for local Body Front Left Up frame
+    void                set_throttle_FLU(float throttle_in) { _inputs_FLU.z = throttle_in; };   // range 0 ~ 1
+    void                set_forward_FLU(float forward_in) { _inputs_FLU.x = forward_in; }; // range -1 ~ +1
+    void                set_lateral_FLU(float lateral_in) { _inputs_FLU.y = lateral_in; };     // range -1 ~ +1
+
+    // accessors for roll, pitch, yaw and throttle inputs to motors in Front-Left-UP frame
+    float               get_throttle_FLU() const { return _inputs_FLU.z; }
+    float               get_forward_FLU() const { return _inputs_FLU.x; }
+    float               get_lateral_FLU() const { return _inputs_FLU.y; }
+
     // var_info for holding Parameter information
     static const struct AP_Param::GroupInfo        var_info[];
 
@@ -55,6 +65,7 @@ protected:
     void output_armed_stabilizing_vectored();
     void output_armed_stabilizing_vectored_6dof();
 
+    Vector3f            _inputs_FLU;
     // Parameters
     AP_Int8             _motor_reverse[AP_MOTORS_MAX_NUM_MOTORS];
     AP_Float            _forwardVerticalCouplingFactor;
