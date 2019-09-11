@@ -2,7 +2,7 @@
 
 
 /*
- * control_althold.pde - init and run calls for althold, flight mode
+ *  althold.pde - init and run calls for althold, flight mode
  */
 
 // althold_init - initialise althold controller
@@ -20,14 +20,16 @@ bool Sub::althold_init()
     // initialise position and desired velocity
     pos_control.init_z_controller();
 
-    last_pilot_heading = ahrs.yaw_sensor;
+    last_roll = ahrs.roll_sensor;
+    last_pitch = ahrs.pitch_sensor;
+    last_yaw = ahrs.yaw_sensor;
+    last_input_ms = AP_HAL::millis();
 
     return true;
 }
 
-// althold_run - runs the althold controller
-// should be called at 100hz or more
-void Sub::althold_run()
+
+void Sub::handle_attitude()
 {
     uint32_t tnow = AP_HAL::millis();
 
@@ -47,11 +49,10 @@ void Sub::althold_run()
     motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
     // get pilot desired lean angles
-    float target_roll, target_pitch;
+    float target_roll, target_pitch, target_yaw;
 
     // Check if set_attitude_target_no_gps is valid
     if (tnow - sub.set_attitude_target_no_gps.last_message_ms < 5000) {
-        float target_yaw;
         Quaternion(
             set_attitude_target_no_gps.packet.q
         ).to_euler(
@@ -59,61 +60,69 @@ void Sub::althold_run()
             target_pitch,
             target_yaw
         );
-        target_roll = degrees(target_roll);
-        target_pitch = degrees(target_pitch);
-        target_yaw = degrees(target_yaw);
+        target_roll = 100 * degrees(target_roll);
+        target_pitch = 100 * degrees(target_pitch);
+        target_yaw = 100 * degrees(target_yaw);
+        attitude_control.input_euler_angle_roll_pitch_yaw(target_roll, target_pitch, target_yaw, true);
+    } else {
+        // If we don't have a mavlink attitude target, we use the pilot's input instead
+        get_pilot_desired_lean_angles(channel_roll->get_control_in(), channel_pitch->get_control_in(), target_roll, target_pitch, attitude_control.get_althold_lean_angle_max_cd());
+        target_yaw = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+        if (abs(target_roll) > 50 || abs(target_pitch) > 50 || abs(target_yaw) > 50) {
+            last_roll = ahrs.roll_sensor;
+            last_pitch = ahrs.pitch_sensor;
+            last_yaw = ahrs.yaw_sensor;
+            last_input_ms = tnow;
+            attitude_control.input_rate_bf_roll_pitch_yaw(target_roll, target_pitch, target_yaw);
+        } else if (tnow < last_input_ms + 250) {
+            // just brake for a few mooments so we don't bounce
+            attitude_control.input_rate_bf_roll_pitch_yaw(0, 0, 0);
+        } else {
+            // Lock attitude
+            attitude_control.input_euler_angle_roll_pitch_yaw(last_roll, last_pitch, last_yaw, true);
+        }
+    }
+}
 
-        attitude_control.input_euler_angle_roll_pitch_yaw(target_roll * 1e2f, target_pitch * 1e2f, target_yaw * 1e2f, true);
+// althold_run - runs the althold controller
+// should be called at 100hz or more
+void Sub::althold_run()
+{
+    // When unarmed, disable motors and stabilization
+    if (!motors.armed()) {
+        motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::GROUND_IDLE);
+        // Sub vehicles do not stabilize roll/pitch/yaw when not auto-armed (i.e. on the ground, pilot has never raised throttle)
+        attitude_control.set_throttle_out(0,true,g.throttle_filt);
+        attitude_control.relax_attitude_controllers();
+        pos_control.relax_z_controller(motors.get_throttle_hover());
+        last_roll = ahrs.roll_sensor;
+        last_pitch = ahrs.pitch_sensor;
+        last_yaw = ahrs.yaw_sensor;
         return;
     }
 
-    get_pilot_desired_lean_angles(channel_roll->get_control_in(), channel_pitch->get_control_in(), target_roll, target_pitch, attitude_control.get_althold_lean_angle_max_cd());
+    // Vehicle is armed, motors are free to run
+    motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
-    // get pilot's desired yaw rate
-    float target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
-
-    // call attitude controller
-    if (!is_zero(target_yaw_rate)) { // call attitude controller with rate yaw determined by pilot input
-        attitude_control.input_euler_angle_roll_pitch_euler_rate_yaw(target_roll, target_pitch, target_yaw_rate);
-        last_pilot_heading = ahrs.yaw_sensor;
-        last_pilot_yaw_input_ms = tnow; // time when pilot last changed heading
-
-    } else { // hold current heading
-
-        // this check is required to prevent bounce back after very fast yaw maneuvers
-        // the inertia of the vehicle causes the heading to move slightly past the point when pilot input actually stopped
-        if (tnow < last_pilot_yaw_input_ms + 250) { // give 250ms to slow down, then set target heading
-            target_yaw_rate = 0; // Stop rotation on yaw axis
-
-            // call attitude controller with target yaw rate = 0 to decelerate on yaw axis
-            attitude_control.input_euler_angle_roll_pitch_euler_rate_yaw(target_roll, target_pitch, target_yaw_rate);
-            last_pilot_heading = ahrs.yaw_sensor; // update heading to hold
-
-        } else { // call attitude controller holding absolute absolute bearing
-            attitude_control.input_euler_angle_roll_pitch_yaw(target_roll, target_pitch, last_pilot_heading, true);
-        }
-    }
+    handle_attitude();
 
     control_depth();
-
-    motors.set_forward(channel_forward->norm_input());
-    motors.set_lateral(channel_lateral->norm_input());
 }
 
 void Sub::control_depth() {
+    // We rotate the RC inputs to the earth frame to check if the user is giving an input that would change the depth.
+    Vector3f earth_frame_rc_inputs = ahrs.get_rotation_body_to_ned() * Vector3f(channel_forward->norm_input(), channel_lateral->norm_input(), (2.0f*(-0.5f+channel_throttle->norm_input())));
     // Hold actual position until zero derivative is detected
     static bool engageStopZ = true;
     // Get last user velocity direction to check for zero derivative points
     static bool lastVelocityZWasNegative = false;
-    if (fabsf(channel_throttle->norm_input()-0.5f) > 0.05f) { // Throttle input above 5%
-        // output pilot's throttle
-        attitude_control.set_throttle_out(channel_throttle->norm_input(), false, g.throttle_filt);
-        // reset z targets to current values
-        pos_control.relax_z_controller(channel_throttle->norm_input());
+
+    if (fabsf(earth_frame_rc_inputs.z) > 0.05f) { // Throttle input  above 5%
+       // reset z targets to current values
+        pos_control.relax_z_controller(motors.get_throttle_hover());
         engageStopZ = true;
         lastVelocityZWasNegative = is_negative(inertial_nav.get_velocity_z_up_cms());
     } else { // hold z
-
         if (ap.at_bottom) {
             pos_control.init_z_controller();
             pos_control.set_pos_target_z_cm(inertial_nav.get_position_z_up_cm() + 10.0); // set target to 10 cm above bottom
@@ -127,7 +136,15 @@ void Sub::control_depth() {
             engageStopZ = false;
             pos_control.init_z_controller();
         }
-
-        pos_control.update_z_controller();
     }
+    pos_control.update_z_controller();
+    // Read the output of the z controller and rotate it so it always points up
+    Vector3f throttle_vehicle_frame = ahrs.get_rotation_body_to_ned().transposed() * Vector3f(0, 0, motors.get_throttle_in_bidirectional());
+    // Output the Z controller + pilot input to all motors.
+
+    //TODO: scale throttle with the ammount of thrusters in the given direction
+    motors.set_throttle(0.5+throttle_vehicle_frame.z + channel_throttle->norm_input()-0.5);
+    motors.set_forward(-throttle_vehicle_frame.x + channel_forward->norm_input());
+    motors.set_lateral(-throttle_vehicle_frame.y + channel_lateral->norm_input());
+
 }
