@@ -63,6 +63,15 @@ protected:
         float width  = 0.338; // y direction (meters)
         float height = 0.254; // z direction (meters)
         float weight = 10.5;  // (kg)
+
+        // Moment of Inertia (I)(kg.m²) approximated with a sphere with a 22 cm radius (r) and same density as water
+        // I = 2.m.r²/5
+        // mass = volume* density
+        // volume = 4.pi.r³/3
+        //                             ,-------------------Mass-----------------.
+        //                             ||--------Volume--------------| |density||
+        float moment_of_inertia =  2 * (4 * M_PI * pow(0.22, 3) / 3)  *  1000   * pow(0.22, 2) / 5;
+
         float net_buoyancy = 2.0; // (N)
 
         float buoyancy_acceleration = GRAVITY_MSS + net_buoyancy/weight;
@@ -91,6 +100,8 @@ protected:
     float calculate_buoyancy_acceleration();
     // calculate drag from velocity and drag coefficient
     void calculate_drag_force(const Vector3f &velocity, const Vector3f &drag_coefficient, Vector3f &force);
+    // calculate torque induced by buoyancy foams
+    void calculate_buoyancy_torque(Vector3f &torque);
 
     Frame *frame;
     Thruster* thrusters;
