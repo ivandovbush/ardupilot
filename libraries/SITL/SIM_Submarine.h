@@ -63,6 +63,8 @@ protected:
         float width  = 0.338; // y direction (meters)
         float height = 0.254; // z direction (meters)
         float weight = 10.5;  // (kg)
+        float thrust = 51.48; // (N)
+        float thruster_mount_radius = 0.25;
 
         // Moment of Inertia (I)(kg.m²) approximated with a sphere with a 22 cm radius (r) and same density as water
         // I = 2.m.r²/5
