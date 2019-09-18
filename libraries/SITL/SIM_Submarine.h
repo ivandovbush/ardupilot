@@ -64,15 +64,16 @@ protected:
         float height = 0.254; // z direction (meters)
         float weight = 10.5;  // (kg)
         float thrust = 51.48; // (N)
-        float thruster_mount_radius = 0.25;
+        float thruster_mount_radius = 0.25; // distance in meters from thrusters to center of mass
+        float equivalent_sphere_radius = 0.22;
 
         // Moment of Inertia (I)(kg.m²) approximated with a sphere with a 22 cm radius (r) and same density as water
         // I = 2.m.r²/5
         // mass = volume* density
         // volume = 4.pi.r³/3
-        //                             ,-------------------Mass-----------------.
-        //                             ||--------Volume--------------| |density||
-        float moment_of_inertia =  2 * (4 * M_PI * pow(0.22, 3) / 3)  *  1000   * pow(0.22, 2) / 5;
+        //                             ,-----------------------------------Mass----------------.
+        //                             ||------------------------Volume------------|  |density||
+        float moment_of_inertia =  2 * (4 * M_PI * pow(equivalent_sphere_area, 3) / 3)  *  1000   * pow(equivalent_sphere_area, 2) / 5;
 
         float net_buoyancy = 2.0; // (N)
 
