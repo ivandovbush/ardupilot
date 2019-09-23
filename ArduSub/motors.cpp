@@ -10,6 +10,9 @@ void Sub::enable_motor_output()
 void Sub::motors_output()
 {
     // check if we are performing the motor test
+    if (control_mode == MOTOR_DETECT){
+        return;
+    }
     if (ap.motor_test) {
         verify_motor_test();
     } else {
