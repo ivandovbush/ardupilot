@@ -47,6 +47,8 @@ public:
     // returns true if motor is enabled
     bool motor_is_enabled(int motor_number);
 
+    bool set_reversed(int motor_number, bool reversed);
+
     // var_info for holding Parameter information
     static const struct AP_Param::GroupInfo        var_info[];
 

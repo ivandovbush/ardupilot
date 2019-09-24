@@ -561,3 +561,15 @@ bool AP_Motors6DOF::motor_is_enabled(int motor_number) {
     }
     return motor_enabled[motor_number];
 }
+
+bool AP_Motors6DOF::set_reversed(int motor_number, bool reversed) {
+    if (motor_number < 0 || motor_number >= AP_MOTORS_MAX_NUM_MOTORS) {
+        return false;
+    }
+    if (reversed) {
+        _motor_reverse[motor_number].set_and_save(-1);
+    } else {
+        _motor_reverse[motor_number].set_and_save(1);
+    }
+    return true;
+}
