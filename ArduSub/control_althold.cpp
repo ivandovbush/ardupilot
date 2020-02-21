@@ -38,6 +38,13 @@ void Sub::handle_attitude()
     // get pilot desired lean angles
     float target_roll, target_pitch, target_yaw;
 
+    Quaternion attitudeTarget;
+    attitudeTarget.from_euler(
+        radians(last_roll * 0.01f),
+        radians(last_pitch * 0.01f),
+        radians(last_yaw * 0.01f)
+        );
+
     // Check if set_attitude_target_no_gps is valid
     if (tnow - sub.set_attitude_target_no_gps.last_message_ms < 5000) {
         Quaternion(
@@ -47,37 +54,20 @@ void Sub::handle_attitude()
             target_pitch,
             target_yaw
         );
-        target_roll = 100 * degrees(target_roll);
-        target_pitch = 100 * degrees(target_pitch);
-        target_yaw = 100 * degrees(target_yaw);
-        last_roll = target_roll;
-        last_pitch = target_pitch;
-        last_yaw = target_yaw;
-        
+
         attitude_control.input_euler_angle_roll_pitch_yaw(target_roll, target_pitch, target_yaw, true);
     } else {
         // If we don't have a mavlink attitude target, we use the pilot's input instead
         get_pilot_desired_lean_angles(channel_roll->get_control_in(), channel_pitch->get_control_in(), target_roll, target_pitch, attitude_control.get_althold_lean_angle_max());
         target_yaw = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
-        if (abs(target_roll) > 50 || abs(target_pitch) > 50) {
-            last_roll = ahrs.roll_sensor;
-            last_pitch = ahrs.pitch_sensor;
-            last_yaw = ahrs.yaw_sensor;
-            last_input_ms = tnow;
-            attitude_control.input_rate_bf_roll_pitch_yaw(target_roll, target_pitch, target_yaw);
-        } else if (abs(target_yaw) > 50) {
-            // if only yaw is being controlled, don't update pitch and roll
-            attitude_control.input_rate_bf_roll_pitch_yaw(0, 0, target_yaw);
-            last_yaw = ahrs.yaw_sensor;
-            last_input_ms = tnow;
-        } else if (tnow < last_input_ms + 250) {
-            // just brake for a few mooments so we don't bounce
-            last_yaw = ahrs.yaw_sensor;
-            attitude_control.input_rate_bf_roll_pitch_yaw(0, 0, 0);
-        } else {
-            // Lock attitude
-            attitude_control.input_euler_angle_roll_pitch_yaw(last_roll, last_pitch, last_yaw, true);
+        if (abs(target_roll) > 50 || abs(target_pitch) > 50 || (abs(target_yaw) > 50)) {
+            // This makes roll/pitch/yaw controls happen in the vehicle frame
+            attitudeTarget.rotate(Vector3f(target_roll*1e-6, target_pitch*1e-6, target_yaw*1e-6));
+            last_roll = degrees(attitudeTarget.get_euler_roll()) * 100;
+            last_pitch = degrees(attitudeTarget.get_euler_pitch()) * 100;
+            last_yaw = degrees(attitudeTarget.get_euler_yaw()) * 100;
         }
+        attitude_control.input_euler_angle_roll_pitch_yaw(last_roll, last_pitch, last_yaw, false);
     }
 }
 
