@@ -852,3 +852,49 @@ int32_t GCS_MAVLINK_Sub::global_position_int_relative_alt() const {
 
 // dummy method to avoid linking AFS
 bool AP_AdvancedFailsafe::gcs_terminate(bool should_terminate, const char *reason) { return false; }
+
+void GCS_MAVLINK_Sub::send_sys_status()
+{
+    // send extended status only once vehicle has been initialised
+    // to avoid unnecessary errors being reported to user
+    if (!gcs().vehicle_initialised()) {
+        return;
+    }
+
+    const AP_BattMonitor &battery = AP::battery();
+    float battery_current;
+    int8_t battery_remaining = -1;
+
+    if (battery.healthy() && battery.current_amps(battery_current)) {
+        battery_current *= 100;
+    } else {
+        battery_current = -1;
+    }
+
+    uint32_t control_sensors_present;
+    uint32_t control_sensors_enabled;
+    uint32_t control_sensors_health;
+
+    gcs().get_sensor_status_flags(control_sensors_present, control_sensors_enabled, control_sensors_health);
+
+    const uint32_t errors = AP::internalerror().errors();
+    const uint16_t errors1 = errors & 0xffff;
+    const uint16_t errors2 = (errors>>16) & 0xffff;
+    const uint16_t errors4 = AP::internalerror().count() & 0xffff;
+
+    mavlink_msg_sys_status_send(
+        chan,
+        control_sensors_present,
+        control_sensors_enabled,
+        control_sensors_health,
+        static_cast<uint16_t>(AP::scheduler().load_average() * 1000),
+        battery.voltage() * 1000,  // mV
+        battery_current,        // in 10mA units
+        battery_remaining,      // in %
+        0,  // comm drops %,
+        0,  // comm drops in pkts,
+        errors1,
+        errors2,
+        0,  // errors3
+        errors4); // errors4
+}

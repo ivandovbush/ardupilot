@@ -40,6 +40,8 @@ protected:
 
     uint64_t capabilities() const override;
 
+    void send_sys_status() override;
+
 private:
 
     void handleMessage(const mavlink_message_t &msg) override;
