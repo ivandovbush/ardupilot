@@ -15,6 +15,9 @@ bool Sub::poshold_init()
         return false;
     }
     pos_control.init_vel_controller_xyz();
+    pos_control.set_desired_velocity_xy(0, 0);
+    pos_control.set_target_to_stopping_point_xy();
+
     // initialize vertical speeds and acceleration
     pos_control.set_max_speed_z(-get_pilot_speed_dn(), g.pilot_speed_up);
     pos_control.set_max_accel_z(g.pilot_accel_z);
@@ -62,18 +65,13 @@ void Sub::poshold_run()
     float lateral_out = 0;
     float forward_out = 0;
 
+    pos_control.set_desired_velocity_xy(0,0);
+
     // Allow pilot to reposition the sub
     if (fabsf(pilot_lateral) > 0.1 || fabsf(pilot_forward) > 0.1) {
-        lateral_out = pilot_lateral;
-        forward_out = pilot_forward;
-        pos_control.set_desired_velocity_xy(0,0);
         pos_control.set_target_to_stopping_point_xy();
-
-    } else {
-        pos_control.set_desired_velocity_xy(0,0);
-        translate_pos_control_rp(lateral_out, forward_out);
     }
-
+    translate_pos_control_rp(lateral_out, forward_out);
     // run loiter controller
     pos_control.update_xy_controller();
 
@@ -89,8 +87,8 @@ void Sub::poshold_run()
 
     //TODO: scale throttle with the ammount of thrusters in the given direction
     motors.set_throttle(0.5+throttle_vehicle_frame.z + channel_throttle->norm_input()-0.5);
-    motors.set_forward(-throttle_vehicle_frame.x + forward_out);
-    motors.set_lateral(-throttle_vehicle_frame.y + lateral_out);
+    motors.set_forward(-throttle_vehicle_frame.x + forward_out + pilot_forward);
+    motors.set_lateral(-throttle_vehicle_frame.y + lateral_out + pilot_lateral);
 
     // We rotate the RC inputs to the earth frame to check if the user is giving an input that would change the depth.
     Vector3f earth_frame_rc_inputs = ahrs.get_rotation_body_to_ned() * Vector3f(channel_forward->norm_input(), channel_lateral->norm_input(), (2.0f*(-0.5f+channel_throttle->norm_input())));
