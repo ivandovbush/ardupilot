@@ -188,11 +188,10 @@ const AP_Param::GroupInfo SITL::var_info2[] = {
 
     // extra delay per main loop
     AP_GROUPINFO("LOOP_DELAY",  55, SITL,  loop_delay, 0),
-
+    AP_GROUPINFO("BUOYANCY", 56, SITL, buoyancy, 0.1),
     AP_GROUPEND
 
 };
-
 
 /* report SITL state via MAVLink */
 void SITL::simstate_send(mavlink_channel_t chan)

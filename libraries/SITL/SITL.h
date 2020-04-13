@@ -178,7 +178,8 @@ public:
     AP_Int8 gps_hdg_enabled; // enable the output of a NMEA heading HDT sentence
     AP_Int32 loop_delay; // extra delay to add to every loop
 
-    // wind control
+    AP_Float buoyancy; // submarine buoyancy in Newtons
+
     enum WindType {
         WIND_TYPE_SQRT = 0,
         WIND_TYPE_NO_LIMIT = 1,
