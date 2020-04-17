@@ -125,18 +125,15 @@ void Sub::althold_run()
 
     if (fabsf(earth_frame_rc_inputs.z) > 0.05f) { // Throttle input  above 5%
        // reset z targets to current values
-        holding_depth = false;
         pos_control.relax_alt_hold_controllers();
+        pos_control.set_target_to_stopping_point_z();
     } else { // hold z
         if (ap.at_surface) {
             pos_control.set_alt_target(g.surface_depth - 5.0f); // set target to 5cm below surface level
-            holding_depth = true;
+            //holding_depth = true;
         } else if (ap.at_bottom) {
             pos_control.set_alt_target(inertial_nav.get_altitude() + 10.0f); // set target to 10 cm above bottom
-            holding_depth = true;
-        } else if (!holding_depth) {
-            pos_control.set_target_to_stopping_point_z();
-            holding_depth = true;
+            //holding_depth = true;
         }
     }
 }
