@@ -37,7 +37,7 @@ bool Sub::poshold_init()
 void Sub::poshold_run()
 {
     uint32_t tnow = AP_HAL::millis();
-
+    printf("Hello\n");
     // if not armed set throttle to zero and exit immediately
     if (!motors.armed()) {
         motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::GROUND_IDLE);
