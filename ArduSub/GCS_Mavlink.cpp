@@ -850,5 +850,28 @@ int32_t GCS_MAVLINK_Sub::global_position_int_relative_alt() const {
     return GCS_MAVLINK::global_position_int_relative_alt();
 }
 
+void GCS_MAVLINK_Sub::set_ekf_origin(const Location& loc)
+{
+    // check location is valid
+    if (!loc.check_latlng()) {
+        return;
+    }
+
+    AP_AHRS &ahrs = AP::ahrs();
+
+    if (!ahrs.set_origin(loc)) {
+        return;
+    }
+
+    ahrs.Log_Write_Home_And_Origin();
+
+    // send ekf origin to GCS
+    if (!try_send_message(MSG_ORIGIN)) {
+        // try again later
+        send_message(MSG_ORIGIN);
+    }
+}
+
+
 // dummy method to avoid linking AFS
 bool AP_AdvancedFailsafe::gcs_terminate(bool should_terminate, const char *reason) { return false; }
