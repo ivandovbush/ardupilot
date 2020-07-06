@@ -284,7 +284,7 @@ protected:
     bool accept_packet(const mavlink_status_t &status, const mavlink_message_t &msg);
     virtual AP_AdvancedFailsafe *get_advanced_failsafe() const { return nullptr; };
     virtual bool set_mode(uint8_t mode) = 0;
-    void set_ekf_origin(const Location& loc);
+    virtual void set_ekf_origin(const Location& loc);
 
     virtual MAV_MODE base_mode() const = 0;
     virtual MAV_STATE system_status() const = 0;

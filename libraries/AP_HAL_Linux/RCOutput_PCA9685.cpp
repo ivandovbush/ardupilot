@@ -47,7 +47,7 @@
  * see: https://github.com/ArduPilot/ardupilot/commit/50459bdca0b5a1adf95
  * and https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library/issues/11
  */
-#define PCA9685_INTERNAL_CLOCK (1.04f * 25000000.f)
+#define PCA9685_INTERNAL_CLOCK (1.01f * 25000000.f)
 #define PCA9685_EXTERNAL_CLOCK 24576000.f
 
 using namespace Linux;
