@@ -1,15 +1,9 @@
 APM:Sub Release Notes:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Sub 4.0.2 21-September-2020
-
- - Fix critical error on preflight calibration
- - Fix CI build
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Sub 4.0.1 17-March-2020
-
- - Do not report battery level percentage.
+Sub 4.1.0beta 7-Aug-2020
+ - Improved Position Hold Behavior
+ - Added support for visual odometry messages.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Sub 4.0.0 4-March-2020
