@@ -63,6 +63,10 @@
  #define HAL_BARO_PROBE_EXT_DEFAULT 0
 #endif
 
+#ifndef HAL_BARO_EXTERNAL_BUS_DEFAULT
+ #define HAL_BARO_EXTERNAL_BUS_DEFAULT -1
+#endif
+
 extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
@@ -107,12 +111,12 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("PRIMARY", 6, AP_Baro, _primary_baro, 0),
 
-    // @Param: EXT_BUS
+    // @Param: _EXT_BUS
     // @DisplayName: External baro bus
     // @Description: This selects the bus number for looking for an I2C barometer. When set to -1 it will probe all external i2c buses based on the GND_PROBE_EXT parameter.
     // @Values: -1:Disabled,0:Bus0,1:Bus1
     // @User: Advanced
-    AP_GROUPINFO("EXT_BUS", 7, AP_Baro, _ext_bus, -1),
+    AP_GROUPINFO("_EXT_BUS", 7, AP_Baro, _ext_bus, HAL_BARO_EXTERNAL_BUS_DEFAULT),
 
     // @Param: SPEC_GRAV
     // @DisplayName: Specific Gravity (For water depth measurement)
