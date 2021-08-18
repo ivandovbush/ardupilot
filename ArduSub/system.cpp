@@ -39,18 +39,19 @@ void Sub::init_ardupilot()
     // Detection won't work until after BoardConfig.init()
     switch (AP_BoardConfig::get_board_type()) {
     case AP_BoardConfig::PX4_BOARD_PIXHAWK2:
-        AP_Param::set_by_name("GND_EXT_BUS", 0);
-        celsius.init(0);
+        AP_Param::set_default_by_name("GND_EXT_BUS", 0);
+        break;
+    case AP_BoardConfig::PX4_BOARD_PIXHAWK:
+        AP_Param::set_by_name("GND_EXT_BUS", 1);
         break;
     default:
-        AP_Param::set_by_name("GND_EXT_BUS", 1);
-        celsius.init(1);
+        AP_Param::set_default_by_name("GND_EXT_BUS", 1);
         break;
     }
-#else
+#elif CONFIG_HAL_BOARD != HAL_BOARD_LINUX
     AP_Param::set_default_by_name("GND_EXT_BUS", 1);
-    celsius.init(1);
 #endif
+    celsius.init(barometer.external_bus());
 
     // identify ourselves correctly with the ground station
     mavlink_system.sysid = g.sysid_this_mav;
