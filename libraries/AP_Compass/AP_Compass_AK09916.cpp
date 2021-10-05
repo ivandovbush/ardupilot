@@ -53,6 +53,7 @@
 #define ICM_WHOAMI_VAL      0xEA
 
 #define AK09916_Device_ID   0x09
+#define AK09918_Device_ID   0x0c
 #define AK09916_MILLIGAUSS_SCALE 10.0f
 
 extern const AP_HAL::HAL &hal;
@@ -229,7 +230,10 @@ bool AP_Compass_AK09916::init()
     _initialized = true;
 
     /* register the compass instance in the frontend */
+    _bus->set_device_type(_devtype);
     _compass_instance = register_compass();
+
+    set_dev_id(_compass_instance, _bus->get_bus_id());
 
     if (_force_external) {
         set_external(_compass_instance, true);
@@ -303,9 +307,15 @@ bool AP_Compass_AK09916::_check_id()
         uint8_t deviceid = 0;
 
         /* Read AK09916's id */
-        if (_bus->register_read(REG_DEVICE_ID, &deviceid) &&
-            deviceid == AK09916_Device_ID) {
-            return true;
+        if (_bus->register_read(REG_DEVICE_ID, &deviceid)) {
+            switch (deviceid) {
+            case AK09916_Device_ID:
+                _devtype = DEVTYPE_AK09916;
+                return true;
+            case AK09918_Device_ID:
+                _devtype = DEVTYPE_AK09918;
+                return true;
+            }
         }
     }
 
