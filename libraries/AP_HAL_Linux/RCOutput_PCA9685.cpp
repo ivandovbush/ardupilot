@@ -92,6 +92,11 @@ void RCOutput_PCA9685::init()
         _enable_pin->mode(HAL_GPIO_OUTPUT);
         _enable_pin->write(0);
     }
+
+    // call timer() at 500Hz
+    _dev->register_periodic_callback(2000,
+                                    FUNCTOR_BIND_MEMBER(&RCOutput_PCA9685::timer, void));
+
 }
 
 void RCOutput_PCA9685::reset_all_channels()
@@ -196,16 +201,19 @@ void RCOutput_PCA9685::write(uint8_t ch, uint16_t period_us)
 
     _pulses_buffer[ch] = period_us;
     _pending_write_mask |= (1U << ch);
-
-    if (!_corking) {
-        _corking = true;
-        push();
-    }
 }
 
 void RCOutput_PCA9685::cork()
 {
     _corking = true;
+}
+
+void RCOutput_PCA9685::timer()
+{
+    if (!_corking) {
+        _corking = true;
+        push();
+    }
 }
 
 void RCOutput_PCA9685::push()

@@ -36,6 +36,7 @@ public:
 
 private:
     void reset();
+    void timer();
 
     AP_HAL::DigitalSource *_enable_pin;
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _dev;
