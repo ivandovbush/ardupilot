@@ -9,6 +9,8 @@ public:
 
 protected:
 
+    bool do_aux_function(aux_func_t ch_option, AuxSwitchPos) override;
+
 private:
 
 };
