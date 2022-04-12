@@ -118,8 +118,8 @@ void Sub::control_depth() {
     Vector3f throttle_vehicle_frame = ahrs.get_rotation_body_to_ned().transposed() * Vector3f(0, 0, motors.get_throttle_in_bidirectional());
     // Output the Z controller + pilot input to all motors.
     Vector3f earth_frame_rc_inputs = ahrs.get_rotation_body_to_ned() * Vector3f(channel_forward->norm_input(), channel_lateral->norm_input(), (2.0f*(-0.5f+channel_throttle->norm_input())));
-
-    float target_climb_rate_cm_s = get_pilot_desired_climb_rate(earth_frame_rc_inputs.z);
+    float target_climb_rate_cm_s = get_pilot_desired_climb_rate(500 + 1000.0f*earth_frame_rc_inputs.z);
+    printf("%f\n", target_climb_rate_cm_s);
     target_climb_rate_cm_s = constrain_float(target_climb_rate_cm_s, -get_pilot_speed_dn(), g.pilot_speed_up);
 
     // desired_climb_rate returns 0 when within the deadzone.
