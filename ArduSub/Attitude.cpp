@@ -95,9 +95,12 @@ float Sub::get_pilot_desired_climb_rate(float throttle_control)
     }
 
     uint16_t dead_zone = channel_throttle->get_dead_zone();
-    uint16_t trim = (channel_throttle->get_radio_max() + channel_throttle->get_radio_min())/2;
-    const float throttle_request = channel_throttle->pwm_to_angle_dz_trim(dead_zone, trim) *0.001f;
-    return throttle_request * (throttle_request > 0.0f ? g.pilot_speed_up : get_pilot_speed_dn());
+    uint16_t center = (channel_throttle->get_radio_max() + channel_throttle->get_radio_min())/2;
+    float throttle = throttle_control - center + 1000;
+    if (abs(throttle) < dead_zone) {
+        return 0;
+    }
+    return throttle;
 }
 
 // get_surface_tracking_climb_rate - hold vehicle at the desired distance above the ground
