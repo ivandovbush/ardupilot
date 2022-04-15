@@ -24,7 +24,7 @@ bool Sub::althold_init()
         last_roll = 0;
         last_pitch = 0;
     }
-    last_yaw = ahrs.yaw_sensor;
+    last_pilot_heading = ahrs.yaw_sensor;
     last_input_ms = AP_HAL::millis();
 
     return true;
@@ -62,7 +62,7 @@ void Sub::handle_attitude()
         if (abs(target_roll) > 50 || abs(target_pitch) > 50 || abs(target_yaw) > 50) {
             last_roll = ahrs.roll_sensor;
             last_pitch = ahrs.pitch_sensor;
-            last_yaw = ahrs.yaw_sensor;
+            last_pilot_heading = ahrs.yaw_sensor;
             last_input_ms = tnow;
             attitude_control.input_rate_bf_roll_pitch_yaw(target_roll, target_pitch, target_yaw);
         } else if (tnow < last_input_ms + 250) {
@@ -70,7 +70,7 @@ void Sub::handle_attitude()
             attitude_control.input_rate_bf_roll_pitch_yaw(0, 0, 0);
         } else {
             // Lock attitude
-            attitude_control.input_euler_angle_roll_pitch_yaw(last_roll, last_pitch, last_yaw, true);
+            attitude_control.input_euler_angle_roll_pitch_yaw(last_roll, last_pitch, last_pilot_heading, true);
         }
     }
 }
@@ -88,7 +88,7 @@ void Sub::althold_run()
         pos_control.relax_z_controller(motors.get_throttle_hover());
         last_roll = 0;
         last_pitch = 0;
-        last_yaw = ahrs.yaw_sensor;
+        last_pilot_heading = ahrs.yaw_sensor;
         return;
     }
 
@@ -99,14 +99,11 @@ void Sub::althold_run()
 
 void Sub::control_depth() {
     // We rotate the RC inputs to the earth frame to check if the user is giving an input that would change the depth.
-    // Read the output of the z controller and rotate it so it always points up
-    pos_control.update_z_controller();
-    Vector3f throttle_vehicle_frame = ahrs.get_rotation_body_to_ned().transposed() * Vector3f(0, 0, motors.get_throttle_in_bidirectional());
     // Output the Z controller + pilot input to all motors.
     Vector3f earth_frame_rc_inputs = ahrs.get_rotation_body_to_ned() * Vector3f(channel_forward->norm_input(), channel_lateral->norm_input(), (2.0f*(-0.5f+channel_throttle->norm_input())));
-    float target_climb_rate_cm_s = get_pilot_desired_climb_rate(500 + 1000.0f*earth_frame_rc_inputs.z);
+    float target_climb_rate_cm_s = get_pilot_desired_climb_rate(500 + g.pilot_speed_up * earth_frame_rc_inputs.z);
     target_climb_rate_cm_s = constrain_float(target_climb_rate_cm_s, -get_pilot_speed_dn(), g.pilot_speed_up);
-
+    pos_control.set_pos_target_z_from_climb_rate_cm(target_climb_rate_cm_s);
     // desired_climb_rate returns 0 when within the deadzone.
     //we allow full control to the pilot, but as soon as there's no input, we handle being at surface/bottom
     if (fabsf(target_climb_rate_cm_s) < 0.05f)  {
@@ -116,6 +113,9 @@ void Sub::control_depth() {
             pos_control.set_pos_target_z_cm(MAX(inertial_nav.get_altitude() + 10.0f, pos_control.get_pos_target_z_cm())); // set target to 10 cm above bottom
         }
     }
+    pos_control.update_z_controller();
+    // Read the output of the z controller and rotate it so it always points up
+    Vector3f throttle_vehicle_frame = ahrs.get_rotation_body_to_ned().transposed() * Vector3f(0, 0, motors.get_throttle_in_bidirectional());
     //TODO: scale throttle with the ammount of thrusters in the given direction
     motors.set_throttle(0.5+throttle_vehicle_frame.z + channel_throttle->norm_input()-0.5);
     motors.set_forward(-throttle_vehicle_frame.x + channel_forward->norm_input());

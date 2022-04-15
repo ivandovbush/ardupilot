@@ -9,7 +9,7 @@ bool Sub::stabilize_init()
         last_roll = 0;
         last_pitch = 0;
     }
-    last_yaw = ahrs.yaw_sensor;
+    last_pilot_heading = ahrs.yaw_sensor;
 
     return true;
 }
@@ -23,7 +23,7 @@ void Sub::stabilize_run()
         motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::GROUND_IDLE);
         attitude_control.set_throttle_out(0,true,g.throttle_filt);
         attitude_control.relax_attitude_controllers();
-        last_yaw = ahrs.yaw_sensor;
+        last_pilot_heading = ahrs.yaw_sensor;
         last_roll = 0;
         last_pitch = 0;
         return;

@@ -94,33 +94,10 @@ float Sub::get_pilot_desired_climb_rate(float throttle_control)
         return 0.0f;
     }
 
-    float desired_rate = 0.0f;
-    float mid_stick = channel_throttle->get_control_mid();
-    float deadband_top = mid_stick + g.throttle_deadzone;
-    float deadband_bottom = mid_stick - g.throttle_deadzone;
-
-    // ensure a reasonable throttle value
-    throttle_control = constrain_float(throttle_control,0.0f,1000.0f);
-
-    // ensure a reasonable deadzone
-    g.throttle_deadzone = constrain_int16(g.throttle_deadzone, 0, 400);
-
-    // check throttle is above, below or in the deadband
-    if (throttle_control < deadband_bottom) {
-        // below the deadband
-        desired_rate = get_pilot_speed_dn() * (throttle_control-deadband_bottom) / deadband_bottom;
-    } else if (throttle_control > deadband_top) {
-        // above the deadband
-        desired_rate = g.pilot_speed_up * (throttle_control-deadband_top) / (1000.0f-deadband_top);
-    } else {
-        // must be in the deadband
-        desired_rate = 0.0f;
-    }
-
-    // desired climb rate for logging
-    desired_climb_rate = desired_rate;
-
-    return desired_rate;
+    uint16_t dead_zone = channel_throttle->get_dead_zone();
+    uint16_t trim = (channel_throttle->get_radio_max() + channel_throttle->get_radio_min())/2;
+    const float throttle_request = channel_throttle->pwm_to_angle_dz_trim(dead_zone, trim) *0.001f;
+    return throttle_request * (throttle_request > 0.0f ? g.pilot_speed_up : get_pilot_speed_dn());
 }
 
 // get_surface_tracking_climb_rate - hold vehicle at the desired distance above the ground
