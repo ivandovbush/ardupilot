@@ -713,6 +713,10 @@ def run_tests(steps):
     """Run a list of steps."""
     global results
 
+    is_ci = "GITHUB_ACTIONS" in os.environ
+    ci_group_start = "::group::" if is_ci else ""
+    ci_group_end = "::endgroup::" if is_ci else ""
+
     corefiles = glob.glob("core*")
     corefiles.extend(glob.glob("ap-*.core"))
     if corefiles:
@@ -735,7 +739,7 @@ def run_tests(steps):
         util.pexpect_close_all()
 
         t1 = time.time()
-        print(">>>> RUNNING STEP: %s at %s" % (step, time.asctime()))
+        print("%s>>>> RUNNING STEP: %s at %s" % (ci_group_start, step, time.asctime()))
         try:
             success = run_step(step)
             testinstance = None
@@ -744,9 +748,9 @@ def run_tests(steps):
             if success:
                 results.add(step, '<span class="passed-text">PASSED</span>',
                             time.time() - t1)
-                print(">>>> PASSED STEP: %s at %s" % (step, time.asctime()))
+                print("%s>>>> PASSED STEP: %s at %s" % (ci_group_end, step, time.asctime()))
             else:
-                print(">>>> FAILED STEP: %s at %s" % (step, time.asctime()))
+                print("%s>>>> FAILED STEP: %s at %s" % (ci_group_end, step, time.asctime()))
                 passed = False
                 failed.append(step)
                 if testinstance is not None:
@@ -758,8 +762,8 @@ def run_tests(steps):
         except Exception as msg:
             passed = False
             failed.append(step)
-            print(">>>> FAILED STEP: %s at %s (%s)" %
-                  (step, time.asctime(), msg))
+            print("%s>>>> FAILED STEP: %s at %s (%s)" %
+                  (ci_group_end, step, time.asctime(), msg))
             traceback.print_exc(file=sys.stdout)
             results.add(step,
                         '<span class="failed-text">FAILED</span>',
