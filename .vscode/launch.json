@@ -1,0 +1,23 @@
+{
+  // needs to run something like 'gdbserver 0.0.0.0:5555 /root/.config/ardupilot-manager/firmware/ardupilot_navigator -A udp:192.168.2.1:14550'
+  "version": "0.2.0",
+  "configurations": [
+    {
+        "name": "Launch gdb-multiarch",
+        "type": "cppdbg",
+        "request": "launch",
+        "miDebuggerPath": "/opt/gcc-arm-9.2-2019.12-x86_64-arm-none-linux-gnueabihf/bin/arm-none-linux-gnueabihf-gdb",
+        "miDebuggerArgs": "--cd=${workspaceFolder} --nx",
+        "MIMode": "gdb",
+         "program": "${workspaceFolder}/build/navigator/bin/ardusub",
+          "setupCommands": [
+            {"text": "set remotetimeout 5"},
+            {"text": "target remote blueos.local:5555"},
+            {"text": "set sysroot remote target:"},
+        ],
+        "launchCompleteCommand": "None",
+        "externalConsole": false,
+        "cwd": "${workspaceFolder}"
+    }
+  ]
+}
