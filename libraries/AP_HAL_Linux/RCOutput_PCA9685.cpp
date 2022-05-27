@@ -203,6 +203,21 @@ void RCOutput_PCA9685::write(uint8_t ch, uint16_t period_us)
     }
 }
 
+void RCOutput_PCA9685::write_relay(uint8_t ch, bool active)
+{
+    if (ch >= (PWM_CHAN_COUNT - _channel_offset)) {
+        return;
+    }
+
+    _pulses_buffer[ch] = active ?  (1000000.f / _frequency) : 0;
+    _pending_write_mask |= (1U << ch);
+
+    if (!_corking) {
+        _corking = true;
+        push();
+    }
+}
+
 void RCOutput_PCA9685::cork()
 {
     _corking = true;

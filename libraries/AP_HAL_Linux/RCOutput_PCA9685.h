@@ -33,6 +33,8 @@ public:
     void     push() override;
     uint16_t read(uint8_t ch) override;
     void     read(uint16_t* period_us, uint8_t len) override;
+    bool     supports_relays() override { return true; };
+    void     write_relay(uint8_t ch, bool active) override;
 
 private:
     void reset();
