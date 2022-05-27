@@ -209,4 +209,14 @@ public:
       trigger send of neopixel data
      */
     virtual void neopixel_send(void) {}
+
+    /*
+      Can this driver handle gpio as well as RC
+    */
+    virtual bool supports_gpio() { return false; };
+
+    /*
+      Writes gpio state to a channel
+    */
+    virtual void write_gpio(uint8_t chan, bool active) {};
 };
