@@ -193,6 +193,9 @@ void RCOutput_PCA9685::write(uint8_t ch, uint16_t period_us)
     if (ch >= (PWM_CHAN_COUNT - _channel_offset)) {
         return;
     }
+    if (_is_relay_mask & (1 << ch)) {
+        return;
+    }
 
     _pulses_buffer[ch] = period_us;
     _pending_write_mask |= (1U << ch);
@@ -203,14 +206,15 @@ void RCOutput_PCA9685::write(uint8_t ch, uint16_t period_us)
     }
 }
 
-void RCOutput_PCA9685::write_relay(uint8_t ch, bool active)
+void RCOutput_PCA9685::write_relay(uint8_t chan, bool active)
 {
-    if (ch >= (PWM_CHAN_COUNT - _channel_offset)) {
+    if (chan >= (PWM_CHAN_COUNT - _channel_offset)) {
         return;
     }
+    _is_relay_mask |= (1U << chan);
 
-    _pulses_buffer[ch] = active ?  (1000000.f / _frequency) : 0;
-    _pending_write_mask |= (1U << ch);
+    _pulses_buffer[chan] = active ?  (1000000.f / _frequency) : 0;
+    _pending_write_mask |= (1U << chan);
 
     if (!_corking) {
         _corking = true;

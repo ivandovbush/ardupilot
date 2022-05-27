@@ -34,7 +34,7 @@ public:
     uint16_t read(uint8_t ch) override;
     void     read(uint16_t* period_us, uint8_t len) override;
     bool     supports_relays() override { return true; };
-    void     write_relay(uint8_t ch, bool active) override;
+    void     write_relay(uint8_t chan, bool active) override;
 
 private:
     void reset();
@@ -51,6 +51,7 @@ private:
     uint8_t _channel_offset;
     int16_t _oe_pin_number;
     uint16_t _pending_write_mask;
+    uint16_t _is_relay_mask;
 };
 
 }

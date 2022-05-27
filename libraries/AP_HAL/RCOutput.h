@@ -308,7 +308,7 @@ public:
     /*
       Writes relay state to a channel
     */
-    virtual void write_relay(uint8_t ch, bool active) {};
+    virtual void write_relay(uint8_t chan, bool active) {};
 
 protected:
 
