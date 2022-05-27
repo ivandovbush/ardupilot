@@ -300,6 +300,16 @@ public:
      */
     virtual void serial_led_send(const uint16_t chan) {}
 
+    /*
+      Can this driver handle relays as well as RC
+    */
+    virtual bool supports_relays() { return false; };
+
+    /*
+      Writes relay state to a channel
+    */
+    virtual void write_relay(uint8_t ch, bool active) {};
+
 protected:
 
     // helper functions for implementation of get_output_mode_banner
