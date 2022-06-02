@@ -174,6 +174,8 @@ static RCInput_RCProtocol rcinDriver{"/dev/ttyPS0", NULL};
 // this is needed to allow for RC input using SERIALn_PROTOCOL=23. No fd is opened
 // in the linux driver and instead user needs to provide a uart via SERIALn_PROTOCOL
 static RCInput_RCProtocol rcinDriver{nullptr, nullptr};
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR
+static RCInput_RCProtocol rcinDriver{"/dev/ttyS0", NULL};
 #else
 static RCInput rcinDriver;
 #endif
