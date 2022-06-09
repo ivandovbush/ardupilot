@@ -345,6 +345,12 @@ void Sub::handle_jsbutton_press(uint8_t _button, bool shift, bool held)
         if(!motors.armed()) {
             break;
         }
+        // This button also resets roll/pitch
+        if(roll_pitch_flag) {
+            last_pitch = 0;
+            last_roll = 0;
+            break;
+        }
         if (!held) {
             zTrim = abs(z_last-500) > 50 ? z_last-500 : 0;
             xTrim = abs(x_last) > 50 ? x_last : 0;
