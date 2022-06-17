@@ -19,6 +19,7 @@
 #pragma once
 
 #include "SIM_Aircraft.h"
+#include "SIM_Frame.h"
 
 namespace SITL {
 
@@ -53,6 +54,8 @@ private:
     float turn_circle(float steering) const;
     float calc_yaw_rate(float steering, float speed);
     float calc_lat_accel(float steering_angle, float speed);
+protected:
+    Frame *frame;
 };
 
 } // namespace SITL
