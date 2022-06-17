@@ -26,6 +26,8 @@ namespace SITL {
 SimRover::SimRover(const char *frame_str) :
     Aircraft(frame_str)
 {
+    battery.setup(1, 0.024, 16.8);
+
     skid_steering = strstr(frame_str, "skid") != nullptr;
 
     if (skid_steering) {
@@ -42,6 +44,7 @@ SimRover::SimRover(const char *frame_str) :
         printf("Vectored Thrust Rover Simulation Started\n");
     }
     lock_step_scheduled = true;
+    printf("Simulation Started\n");
 }
 
 
@@ -137,6 +140,19 @@ void SimRover::update(const struct sitl_input &input)
     dcm.rotate(gyro * delta_time);
     dcm.normalize();
 
+
+    // assume 20A at full fwd throttle
+    // battery_current = 20 *fabsf(throttle);
+
+    enum ap_var_type ptype;
+    AP_Int16* servo1_max = (AP_Int16*) AP_Param::find("SERVO1_MAX", &ptype);
+
+    float throttle_cap = ((*servo1_max) - 1500)/500.0;
+    float effective_throttle = MAX(throttle, throttle_cap);
+    battery_voltage = sitl->batt_voltage - 0.7*effective_throttle;
+    battery_current = 20 * throttle;
+    battery.set_current(battery_current);
+
     // accel in body frame due to motor
     accel_body = Vector3f(accel, 0, 0);
 
@@ -168,6 +184,7 @@ void SimRover::update(const struct sitl_input &input)
 
     // update magnetic field
     update_mag_field_bf();
+
 }
 
 } // namespace SITL

@@ -17,6 +17,7 @@
 */
 
 #include "SIM_Battery.h"
+#include "stdio.h"
 
 using namespace SITL;
 
@@ -94,6 +95,7 @@ float Battery::get_resting_voltage(float charge_pct) const
  */
 void Battery::set_initial_SoC(float voltage)
 {
+    printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/n");
     const float max_cell_voltage = soc_table[0].volt_per_cell;
     float cell_volt = (voltage / max_voltage) * max_cell_voltage;
 
@@ -116,6 +118,7 @@ void Battery::set_initial_SoC(float voltage)
 
 void Battery::setup(float _capacity_Ah, float _resistance, float _max_voltage)
 {
+    printf("battery setup");
     capacity_Ah = _capacity_Ah;
     resistance = _resistance;
     max_voltage = _max_voltage;

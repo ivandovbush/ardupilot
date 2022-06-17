@@ -21,7 +21,7 @@
 #include <AP_Baro/AP_Baro.h>
 #include <AP_Filesystem/AP_Filesystem.h>
 
-#include <stdio.h>
+#include "stdio.h"
 #include <sys/stat.h>
 #include "picojson.h"
 
@@ -596,6 +596,7 @@ void Frame::calculate_forces(const Aircraft &aircraft,
 // calculate current and voltage
 void Frame::current_and_voltage(float &voltage, float &current)
 {
+    printf("HAASDADASDADASD/n");
     float param_voltage = AP::sitl()->batt_voltage;
     if (!is_equal(last_param_voltage,param_voltage)) {
         battery->init_voltage(param_voltage);

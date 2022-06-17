@@ -57,6 +57,7 @@ const AP_Param::GroupInfo IntelligentEnergy24::var_info[] = {
 IntelligentEnergy24::IntelligentEnergy24() : IntelligentEnergy::IntelligentEnergy()
 {
     AP_Param::setup_object_defaults(this, var_info);
+    printf("Intelligentwhatever");
 }
 
 void IntelligentEnergy24::update(const struct sitl_input &input)
