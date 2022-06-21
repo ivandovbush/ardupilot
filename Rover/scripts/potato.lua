@@ -25,7 +25,8 @@ function update() -- this is the loop which periodically runs
         param:set('SERVO2_MAX', 1500 + new_current_throttle_limit)
         param:set('SERVO2_MIN', 1500 - new_current_throttle_limit)
     end
-    gcs:send_text(2,string.format("range: %.0fs ", new_current_throttle_limit)) 
+    -- gcs:send_text(6,string.format("range: %.0fs ", new_current_throttle_limit))
+    gcs:send_text(6,string.format("range: %.0f ", desired_power))
 
   return update, 1000 -- reschedules the loop
 end
