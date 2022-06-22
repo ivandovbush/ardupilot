@@ -105,6 +105,7 @@ public:
         k_param_input_voltage,              // deprecated, can be deleted
         k_param_pack_capacity,              // deprecated, can be deleted
         k_param_battery,
+        k_param_battery_desired_power_consumption,
 
         //
         // 150: Navigation parameters
@@ -398,6 +399,8 @@ public:
 
     // gain for speed of correction in loiter
     AP_Float loiter_speed_gain;
+
+    AP_Float battery_desired_power_consumption;
 
     // FS options
     AP_Int32 fs_options;

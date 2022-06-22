@@ -640,6 +640,14 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("LOIT_SPEED_GAIN", 47, ParametersG2, loiter_speed_gain, 0.5f),
 
+    // @Param: LOIT_SPEED_GAIN
+    // @DisplayName: Loiter speed gain
+    // @Description: Determines how agressively LOITER tries to correct for drift from loiter point. Higher is faster but default should be acceptable.
+    // @Range: 0 5
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("BAT_DES_POWER_W", 51, ParametersG2, battery_desired_power_consumption, -1.0f),
+
     // @Param: FS_OPTIONS
     // @DisplayName: Rover Failsafe Options
     // @Description: Bitmask to enable Rover failsafe options
