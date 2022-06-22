@@ -1025,7 +1025,7 @@ class linux(Board):
 
 
 class navigator(linux):
-    toolchain = 'arm-linux-gnueabihf'
+    toolchain = 'arm-none-linux-gnueabihf'
 
     def configure_env(self, cfg, env):
         super(navigator, self).configure_env(cfg, env)

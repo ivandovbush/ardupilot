@@ -2,31 +2,27 @@
 -- Pick a random number to send back
 
 function update() -- this is the loop which periodically runs
-    local amps = battery:current_amps(0)
-    local target_amps = 3.0
-    local deadzone = 0.5
-    local current_throttle_limit =  param:get('SERVO1_MAX') - 1500
+    local watts = battery:current_amps(0) * battery:voltage(0)
+    local deadzone = 0.1
+    local current_throttle_limit =  param:get('MOT_THR_MAX')
+    local desired_power =  param:get('BAT_DES_POWER_W')
     local new_current_throttle_limit = current_throttle_limit
     local mode = vehicle:get_mode()
-    if not (mode == 15) then    -- if guided mode
+    if not (mode == 15 or mode == 10 ) then    -- if guided mode
         return update, 1000
     end
-    if amps > target_amps + deadzone then
-        new_current_throttle_limit = math.max(current_throttle_limit * 0.9, 100)
-        param:set('SERVO1_MAX', 1500 + new_current_throttle_limit)
-        param:set('SERVO1_MIN', 1500 - new_current_throttle_limit)
-        param:set('SERVO2_MAX', 1500 + new_current_throttle_limit)
-        param:set('SERVO2_MIN', 1500 - new_current_throttle_limit)
+    if watts > desired_power + deadzone then
+        new_current_throttle_limit = math.max(current_throttle_limit - 1, 30)
+        param:set('MOT_THR_MAX', new_current_throttle_limit)
     end
-    if amps < target_amps - deadzone then
-        new_current_throttle_limit = math.min(current_throttle_limit * 1.1, 500)
-        param:set('SERVO1_MAX', 1500 + new_current_throttle_limit)
-        param:set('SERVO1_MIN', 1500 - new_current_throttle_limit)
-        param:set('SERVO2_MAX', 1500 + new_current_throttle_limit)
-        param:set('SERVO2_MIN', 1500 - new_current_throttle_limit)
+    if watts < desired_power - deadzone then
+        new_current_throttle_limit = math.min(current_throttle_limit + 1, 100)
+        param:set('MOT_THR_MAX', new_current_throttle_limit)
+
     end
     -- gcs:send_text(6,string.format("range: %.0fs ", new_current_throttle_limit))
-    gcs:send_text(6,string.format("range: %.0f ", desired_power))
+    gcs:send_text(6,string.format("target: %.0f ", desired_power))
+    gcs:send_text(6,string.format("max: %.0f ", new_current_throttle_limit))
 
   return update, 1000 -- reschedules the loop
 end
