@@ -145,12 +145,11 @@ void SimRover::update(const struct sitl_input &input)
     // battery_current = 20 *fabsf(throttle);
 
     enum ap_var_type ptype;
-    AP_Int16* servo1_max = (AP_Int16*) AP_Param::find("SERVO1_MAX", &ptype);
+    AP_Int16* motor_thrust_max = (AP_Int16*) AP_Param::find("MOT_THR_MAX", &ptype);
 
-    float throttle_cap = ((*servo1_max) - 1500)/500.0;
-    float effective_throttle = MAX(throttle, throttle_cap);
+    float effective_throttle = throttle * (*motor_thrust_max)/100;
     battery_voltage = sitl->batt_voltage - 0.7*effective_throttle;
-    battery_current = 20 * throttle;
+    battery_current = 20 * effective_throttle;
     battery.set_current(battery_current);
 
     // accel in body frame due to motor
