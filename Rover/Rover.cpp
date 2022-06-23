@@ -164,8 +164,21 @@ bool Rover::set_target_location(const Location& target_loc)
     if (!control_mode->in_guided_mode()) {
         return false;
     }
-
+    _target_loc = target_loc;
     return mode_guided.set_desired_location(target_loc);
+}
+
+// set target location (for use by scripting)
+bool Rover::get_target_location(Location& target_loc)
+{
+    switch (control_mode->mode_number()) {
+    case Mode::Number::GUIDED:
+        return mode_guided.get_desired_location(target_loc);
+        break;
+    default:
+        break;
+    }
+    return false;
 }
 
 // set target velocity (for use by scripting)

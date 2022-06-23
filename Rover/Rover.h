@@ -175,6 +175,7 @@ private:
 
     // The rover's current location
     struct Location current_loc;
+    struct Location _target_loc;
 
     // Camera
 #if CAMERA == ENABLED
@@ -269,6 +270,7 @@ private:
     // Rover.cpp
 #if AP_SCRIPTING_ENABLED
     bool set_target_location(const Location& target_loc) override;
+    bool get_target_location(Location& target_loc) override;
     bool set_target_velocity_NED(const Vector3f& vel_ned) override;
     bool set_steering_and_throttle(float steering, float throttle) override;
     // set desired turn rate (degrees/sec) and speed (m/s). Used for scripting
