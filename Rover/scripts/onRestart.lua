@@ -76,7 +76,7 @@ function update() -- this is the loop which periodically runs
       end
     end
   end
-  if (vehicle:get_mode() == MODE_MANUAL or vehicle:get_mode() == MODE_HOLD) then
+  if (vehicle:get_mode() ~= MODE_AUTO) then
         gcs:send_text(6,string.format("setting to auto mode..."))
         vehicle:set_mode(MODE_AUTO)
         return update, 1000 -- reschedules the loop
