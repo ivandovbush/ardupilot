@@ -75,8 +75,10 @@ function reload_waypoint()
     io.input(file)
     local waypoint_number = io.read("*number")
     if waypoint_number then
-      mission:  (waypoint_number)
-      gcs:send_text(0, string.format("loaded waypoint: %.0f", waypoint_number))
+      if mission:get_current_nav_index() ~= waypoint_number then
+        mission:set_current_cmd(waypoint_number)
+        gcs:send_text(0, string.format("loaded waypoint: %.0f", waypoint_number))
+      end
     else
       gcs:send_text(0, 'unable to read waypoint, giving up')
     end
@@ -98,7 +100,7 @@ function mission_control() -- this is the loop which periodically runs
       end
       return update, 1000
     end
-    if gpio:read(27) and not arming:is_armed() and not state == STATE_CRITICAL  then
+    if gpio:read(27) and not arming:is_armed() and not (state == STATE_CRITICAL)  then
       gcs:send_text(6,string.format("attempting to arm"))
       arming:arm()
       return update, 3000
@@ -127,7 +129,6 @@ function mission_control() -- this is the loop which periodically runs
     local mission_state = mission:state()
 
     if mission:get_current_nav_index() <= 1 then
-       gcs:send_text(6,string.format("attempting to load waypoint"))
        reload_waypoint()
     end
     if (mission:get_current_nav_index() ~= 0) then
@@ -143,6 +144,11 @@ function lost_voltage()
     return voltage < 5.0 or voltage > 18.0
 end
 
+function is_upside_down()
+    local roll = math.deg(ahrs:get_roll())
+    local pitch = math.deg(ahrs:get_pitch())
+    return math.abs(roll) > 90 or math.abs(pitch) > 90
+end
 
 function update_power_strategy()
     local voltage = battery:voltage(0)
@@ -156,6 +162,9 @@ function update_power_strategy()
     end
     if lost_voltage() then
         state = STATE_LOST_VOLTAGE
+    end
+    if is_upside_down() then
+        state = STATE_CRITICAL
     end
 end
 
@@ -187,6 +196,16 @@ function update_standby()
     end
 end
 
+function limit_thrust_to(percentage)
+    param:set('MOT_THR_MAX', percentage)
+    pwm_percent = math.max(percentage/100.0, 0.1)
+    param:set('SERVO1_MAX',  1500 + pwm_percent * 400)
+    param:set('SERVO1_MIN',  1500 - pwm_percent * 400)
+    param:set('SERVO3_MAX',  1500 + pwm_percent * 400)
+    param:set('SERVO3_MIN',  1500 - pwm_percent * 400)
+    gcs:send_text(6,string.format("thrust at %.0f", percentage))
+end
+
 function power_control()
     local watts = battery:current_amps(0) * battery:voltage(0)
     local deadzone = 3
@@ -195,12 +214,19 @@ function power_control()
     local new_current_throttle_limit = current_throttle_limit
     if watts > desired_power + deadzone then
         new_current_throttle_limit = math.max(current_throttle_limit - 1, 0)
-        param:set('MOT_THR_MAX', new_current_throttle_limit)
+        limit_thrust_to(new_current_throttle_limit)
     end
     if watts < desired_power - deadzone then
-        new_current_throttle_limit = math.min(current_throttle_limit + 1, max_thrust_percentage.get())  -- INCREASE BEFORE SENDING TO HAWAII
-        param:set('MOT_THR_MAX', new_current_throttle_limit)
-
+        new_current_throttle_limit = math.min(current_throttle_limit + 1, max_thrust_percentage:get())  -- INCREASE BEFORE SENDING TO HAWAII
+        limit_thrust_to(new_current_throttle_limit)
+    end
+    if not arming:is_armed() then
+        limit_thrust_to(1)
+    end
+    if vehicle:get_mode() == MODE_AUTO then
+        if mission:state() == mission.MISSION_COMPLETE or mission:state() == mission.MISSION_STOPPED then
+            limit_thrust_to(1)
+        end
     end
 end
 
