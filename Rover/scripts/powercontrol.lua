@@ -157,11 +157,11 @@ function update_power_strategy()
     elseif voltage < BAT_CRITICAL then
         state = STATE_CRITICAL
     end
-    if override:get() > 0 then
-        state = STATE_OVERRIDE
-    end
     if lost_voltage() then
         state = STATE_LOST_VOLTAGE
+    end
+    if override:get() > 0 then
+        state = STATE_OVERRIDE
     end
     if is_upside_down() then
         state = STATE_CRITICAL
