@@ -140,6 +140,10 @@ void AP_Relay::set(const uint8_t instance, const bool value)
     if (_pin[instance] == -1) {
         return;
     }
+    if (hal.rcout->supports_relays()) {
+      hal.rcout->write_relay(_pin[instance], value);
+      return;
+    }
     hal.gpio->pinMode(_pin[instance], HAL_GPIO_OUTPUT);
     hal.gpio->write(_pin[instance], value);
 }
