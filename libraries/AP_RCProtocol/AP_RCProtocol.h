@@ -140,6 +140,7 @@ public:
         uint8_t parity;
         uint8_t stop_bits;
         bool invert_rx;
+        bool is_sbus;
     };
 
     // return true if we are decoding a byte stream, instead of pulses

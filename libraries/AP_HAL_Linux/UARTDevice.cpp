@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
-
+#include "SBUS_configurator.h"
 #include <AP_HAL/AP_HAL.h>
 
 UARTDevice::UARTDevice(const char *device_path):
@@ -98,6 +98,11 @@ void UARTDevice::_disable_crlf()
     t.c_cc[VMIN] = 0;
 
     tcsetattr(_fd, TCSANOW, &t);
+}
+
+void UARTDevice::configure_for_sbus(uint32_t baudrate)
+{
+    SBUS::configure_sbus(_fd, baudrate);
 }
 
 void UARTDevice::set_speed(uint32_t baudrate)

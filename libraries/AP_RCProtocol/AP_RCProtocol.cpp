@@ -251,21 +251,24 @@ void AP_RCProtocol::SerialConfig::apply_to_uart(AP_HAL::UARTDriver *uart) const
         uart->set_options(uart->get_options() & ~AP_HAL::UARTDriver::OPTION_RXINV);
     }
     uart->begin(baud, 128, 128);
+    if (is_sbus) {
+        uart->configure_for_sbus(baud);
+    }
 }
 
 static const AP_RCProtocol::SerialConfig serial_configs[] {
     // BAUD PRTY STOP INVERT-RX
     // inverted and uninverted 115200 8N1:
-    { 115200,  0,   1, false  },
-    { 115200,  0,   1, true },
+    { 115200,  0,   1, false, false  },
+    { 115200,  0,   1, true, false },
     // SBUS settings, even parity, 2 stop bits:
-    { 100000,  2,   2, true },
+    { 100000,  2,   2, true, true },
 #if AP_RCPROTOCOL_FASTSBUS_ENABLED
     // FastSBUS:
-    { 200000,  2,   2, true },
+    { 200000,  2,   2, true, false },
 #endif
     // CrossFire:
-    { 416666,  0,   1, false },
+    { 416666,  0,   1, false, false },
 };
 
 static_assert(ARRAY_SIZE(serial_configs) > 1, "must have at least one serial config");

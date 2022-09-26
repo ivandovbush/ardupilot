@@ -157,4 +157,6 @@ public:
 
     // disable TX/RX pins for unusued uart
     virtual void disable_rxtx(void) const {}
+
+    virtual void configure_for_sbus(uint32_t baudrate) { };
 };

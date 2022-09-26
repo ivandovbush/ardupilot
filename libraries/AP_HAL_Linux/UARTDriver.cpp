@@ -499,3 +499,7 @@ uint64_t UARTDriver::receive_time_constraint_us(uint16_t nbytes)
     }
     return last_receive_us;
 }
+
+void UARTDriver::configure_for_sbus(uint32_t baudrate) {
+    _device->configure_for_sbus(baudrate);
+}

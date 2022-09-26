@@ -20,6 +20,7 @@ public:
         return _flow_control;
     }
     virtual void set_parity(int v) override;
+    virtual void configure_for_sbus(uint32_t baudrate) override;
 
 private:
     void _disable_crlf();

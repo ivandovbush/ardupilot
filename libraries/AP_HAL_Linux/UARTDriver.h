@@ -89,6 +89,7 @@ private:
     // timestamp for receiving data on the UART, avoiding a lock
     uint64_t _receive_timestamp[2];
     uint8_t _receive_timestamp_idx;
+    virtual void configure_for_sbus(uint32_t baudrate) override;
 
 protected:
     const char *device_path;

@@ -20,6 +20,7 @@ public:
     {
         /* most devices simply ignore this setting */
     };
+    virtual void configure_for_sbus(uint32_t baudrate) { };
 
     /* Depends on lower level to implement, most devices are fine with defaults */
     virtual void set_parity(int v) { }
