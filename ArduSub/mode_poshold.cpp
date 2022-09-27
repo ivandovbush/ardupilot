@@ -24,8 +24,11 @@ bool ModePoshold::init(bool ignore_checks)
     position_control->init_xy_controller_stopping_point();
     position_control->init_z_controller();
 
-    // Stop all thrusters
-    attitude_control->set_throttle_out(0.5f ,true, g.throttle_filt);
+    // initialise position and desired velocity
+    float pos = sub.stopping_distance();
+    float zero = 0;
+    position_control->input_pos_vel_accel_z(pos, zero, zero);
+
     attitude_control->relax_attitude_controllers();
     position_control->relax_z_controller(0.5f);
 

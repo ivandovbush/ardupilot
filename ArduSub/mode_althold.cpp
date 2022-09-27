@@ -28,6 +28,14 @@ void ModeAlthold::run()
     run_post();
 }
 
+
+float Sub::stopping_distance() {
+    const float curr_pos_z = inertial_nav.get_position_z_up_cm();
+    float curr_vel_z = inertial_nav.get_velocity_z_up_cms();
+    float distance = - (curr_vel_z * curr_vel_z) / (2 * g.pilot_accel_z);
+    return curr_pos_z  + distance;
+}
+
 void ModeAlthold::run_pre()
 {
     uint32_t tnow = AP_HAL::millis();
@@ -38,10 +46,14 @@ void ModeAlthold::run_pre()
     if (!motors.armed()) {
         motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::GROUND_IDLE);
         // Sub vehicles do not stabilize roll/pitch/yaw when not auto-armed (i.e. on the ground, pilot has never raised throttle)
-        attitude_control->set_throttle_out(0.5,true,g.throttle_filt);
+        attitude_control->set_throttle_out(0.75, true, 100.0);
+        position_control->init_z_controller();
         attitude_control->relax_attitude_controllers();
         position_control->relax_z_controller(motors.get_throttle_hover());
         sub.last_pilot_heading = ahrs.yaw_sensor;
+        float pos = sub.stopping_distance();
+        float zero = 0;
+        position_control->input_pos_vel_accel_z(pos, zero, zero);
         return;
     }
 
