@@ -63,8 +63,6 @@ void Sub::handle_attitude()
         get_pilot_desired_lean_angles(channel_roll->get_control_in(), channel_pitch->get_control_in(), target_roll, target_pitch, attitude_control.get_althold_lean_angle_max());
         target_yaw = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
         if (abs(target_roll) > 50 || abs(target_pitch) > 50 || abs(target_yaw) > 50) {
-            last_roll = ahrs.roll_sensor;
-            last_pitch = ahrs.pitch_sensor;
             last_pilot_heading = ahrs.yaw_sensor;
             last_input_ms = tnow;
             attitude_control.input_rate_bf_roll_pitch_yaw(target_roll, target_pitch, target_yaw);
