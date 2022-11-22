@@ -190,3 +190,13 @@ uint16_t Sub::get_pilot_speed_dn() const
     }
     return abs(g.pilot_speed_dn);
 }
+
+Quaternion Sub::leveled_attitude_target() {
+    Quaternion attitude_target;
+    attitude_target.from_euler(
+        0,
+        0,
+        radians(ahrs.yaw_sensor * 0.01f)
+    );
+    return attitude_target;
+}

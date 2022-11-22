@@ -24,13 +24,17 @@ bool Sub::althold_init()
     float zero = 0;
     pos_control.input_pos_vel_accel_z(pos, zero, zero);
 
-    if(prev_control_mode != control_mode_t::STABILIZE) {
-        last_roll = 0;
-        last_pitch = 0;
-    }
-    last_pilot_heading = ahrs.yaw_sensor;
-    last_input_ms = AP_HAL::millis();
+    Quaternion attitude_target;
 
+    switch(prev_control_mode) {
+        case control_mode_t::STABILIZE:
+        case control_mode_t::ACRO:
+            attitude_target = attitude_control.get_attitude_target_quat();
+            break;
+        default:
+            attitude_target = leveled_attitude_target();
+    }
+    attitude_control.input_quaternion(attitude_target);
     return true;
 }
 
@@ -65,9 +69,6 @@ void Sub::handle_attitude()
         target_roll = 100 * degrees(target_roll);
         target_pitch = 100 * degrees(target_pitch);
         target_yaw = 100 * degrees(target_yaw);
-        last_roll = target_roll;
-        last_pitch = target_pitch;
-        last_pilot_heading = target_yaw;
         attitude_control.input_euler_angle_roll_pitch_yaw(target_roll, target_pitch, target_yaw, true);
     } else {
         // If we don't have a mavlink attitude target, we use the pilot's input instead
@@ -75,17 +76,10 @@ void Sub::handle_attitude()
         float yaw_input =  channel_yaw->pwm_to_angle_dz_trim(channel_yaw->get_dead_zone() * gain, channel_yaw->get_radio_trim());
         target_yaw = get_pilot_desired_yaw_rate(yaw_input);
         if (abs(target_roll) > 50 || abs(target_pitch) > 50 || abs(target_yaw) > 50) {
-            last_roll = ahrs.roll_sensor;
-            last_pitch = ahrs.pitch_sensor;
-            last_pilot_heading = ahrs.yaw_sensor;
-            last_input_ms = tnow;
             attitude_control.input_rate_bf_roll_pitch_yaw(target_roll, target_pitch, target_yaw);
-        } else if (tnow < last_input_ms + 250) {
-            // just brake for a few mooments so we don't bounce
-            attitude_control.input_rate_bf_roll_pitch_yaw(0, 0, 0);
         } else {
-            // Lock attitude
-            attitude_control.input_euler_angle_roll_pitch_yaw(last_roll, last_pitch, last_pilot_heading, true);
+            // stay locked at the previous attitude
+            attitude_control.input_quaternion(attitude_control.get_attitude_target_quat());
         }
     }
 }
@@ -104,9 +98,7 @@ void Sub::althold_run()
         float pos = stopping_distance();
         float zero = 0;
         pos_control.input_pos_vel_accel_z(pos, zero, zero);
-        last_roll = 0;
-        last_pitch = 0;
-        last_pilot_heading = ahrs.yaw_sensor;
+        attitude_control.input_quaternion(leveled_attitude_target());
         return;
     }
 

@@ -390,8 +390,6 @@ private:
 
     int32_t last_pilot_heading;
     uint32_t last_input_ms;
-    int32_t last_roll;
-    int32_t last_pitch;
     uint32_t last_pilot_yaw_input_ms;
     uint32_t fs_terrain_recover_start_ms;
 
@@ -459,6 +457,7 @@ private:
 
     // Handles attitude control for stabilize and althold modes
     void handle_attitude();
+    Quaternion leveled_attitude_target();
     bool auto_init(void);
     void auto_run();
     void auto_wp_start(const Vector3f& destination);

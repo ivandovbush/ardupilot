@@ -140,16 +140,6 @@ void Sub::transform_manual_control_to_rc_override(int16_t x, int16_t y, int16_t 
 
 void Sub::handle_jsbutton_press(uint8_t _button, bool shift, bool held)
 {
-    // Used for trimming level in vehicle frame
-    Quaternion attitudeTarget;
-    attitudeTarget.from_euler(
-        radians(last_roll * 0.01f),
-        radians(last_pitch * 0.01f),
-        radians(last_pilot_heading * 0.01f)
-        );
-    Vector3f localPitch = Vector3f(0, 1, 0);
-    Vector3f localRoll = Vector3f(1, 0, 0);
-
     // Act based on the function assigned to this button
     switch (get_button(_button)->function(shift)) {
     case JSButton::button_function_t::k_arm_toggle:
@@ -340,37 +330,29 @@ void Sub::handle_jsbutton_press(uint8_t _button, bool shift, bool held)
         }
         break;
     case JSButton::button_function_t::k_trim_roll_inc:
-        attitudeTarget.rotate(localRoll * radians(1));
-        last_roll = degrees(attitudeTarget.get_euler_roll()) * 100;
-        last_pitch = degrees(attitudeTarget.get_euler_pitch()) * 100;
-        last_pilot_heading = degrees(attitudeTarget.get_euler_yaw()) * 100;
+        attitude_control.input_angle_step_bf_roll_pitch_yaw(100,0,0);
         break;
     case JSButton::button_function_t::k_trim_roll_dec:
-        attitudeTarget.rotate(localRoll * radians(-1));
-        last_roll = degrees(attitudeTarget.get_euler_roll()) * 100;
-        last_pitch = degrees(attitudeTarget.get_euler_pitch()) * 100;
-        last_pilot_heading = degrees(attitudeTarget.get_euler_yaw()) * 100;
+        attitude_control.input_angle_step_bf_roll_pitch_yaw(-100,0,0);
         break;
     case JSButton::button_function_t::k_trim_pitch_inc:
-        attitudeTarget.rotate(localPitch * radians(1));
-        last_roll = degrees(attitudeTarget.get_euler_roll()) * 100;
-        last_pitch = degrees(attitudeTarget.get_euler_pitch()) * 100;
-        last_pilot_heading = degrees(attitudeTarget.get_euler_yaw()) * 100;
+        attitude_control.input_angle_step_bf_roll_pitch_yaw(0,100,0);
         break;
     case JSButton::button_function_t::k_trim_pitch_dec:
-        attitudeTarget.rotate(localPitch * radians(-1));
-        last_roll = degrees(attitudeTarget.get_euler_roll()) * 100;
-        last_pitch = degrees(attitudeTarget.get_euler_pitch()) * 100;
-        last_pilot_heading = degrees(attitudeTarget.get_euler_yaw()) * 100;
+        attitude_control.input_angle_step_bf_roll_pitch_yaw(0,-100,0);
         break;
     case JSButton::button_function_t::k_input_hold_set:
         if(!motors.armed()) {
             break;
         }
         if(roll_pitch_flag) {
-            last_pitch = 0;
-            last_roll = 0;
-            last_input_ms = 0;
+            Quaternion level_attitude;
+            level_attitude.from_euler(
+                0,
+                0,
+                radians(ahrs.yaw_sensor * 0.01f)
+            );
+            attitude_control.input_quaternion(level_attitude);
             break;
         }
         if (!held) {
