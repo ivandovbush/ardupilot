@@ -130,7 +130,7 @@ bool AP_ADC_ADS1115::init()
 
     _gain = ADS1115_PGA_4P096;
 
-    _dev->register_periodic_callback(100000, FUNCTOR_BIND_MEMBER(&AP_ADC_ADS1115::_update, void));
+    _dev->register_periodic_callback(10000, FUNCTOR_BIND_MEMBER(&AP_ADC_ADS1115::_update, void));
 
     return true;
 }

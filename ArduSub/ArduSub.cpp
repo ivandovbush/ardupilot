@@ -30,7 +30,7 @@ const AP_Scheduler::Task Sub::scheduler_tasks[] = {
 #if OPTFLOW == ENABLED
     SCHED_TASK_CLASS(OpticalFlow,          &sub.optflow,             update,         200, 160),
 #endif
-    SCHED_TASK(update_batt_compass,   10,    120),
+    SCHED_TASK(update_batt_compass,   100,    120),
     SCHED_TASK(read_rangefinder,      20,    100),
     SCHED_TASK(update_altitude,       10,    100),
     SCHED_TASK(three_hz_loop,          3,     75),

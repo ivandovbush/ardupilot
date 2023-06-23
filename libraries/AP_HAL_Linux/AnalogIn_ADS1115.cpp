@@ -70,7 +70,7 @@ void AnalogIn_ADS1115::init()
 
 void AnalogIn_ADS1115::_update()
 {
-    if (AP_HAL::micros() - _last_update_timestamp < 100000) {
+    if (AP_HAL::micros() - _last_update_timestamp < 10000) {
         return;
     }
 
