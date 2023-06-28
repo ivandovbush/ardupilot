@@ -110,6 +110,13 @@ const AP_Param::GroupInfo AP_MotorsUGV::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("VEC_ANGLEMAX", 13, AP_MotorsUGV, _vector_angle_max, 0.0f),
 
+    // @Param: THST_EXPO
+    // @DisplayName: Thrust Asymmetry
+    // @Description: Thrust Asymetry. Used for skid-steeing. 2.0 means your motors move twice as fast forward than they do backwards.
+    // @Range: 1.0 10.0
+    // @User: Advanced
+    AP_GROUPINFO("THST_ASYM", 14, AP_MotorsUGV, _thrust_asymmetry, 1.0f),
+
     AP_GROUPEND
 };
 
@@ -778,8 +785,15 @@ void AP_MotorsUGV::output_skid_steering(bool armed, float steering, float thrott
     }
 
     // add in throttle and steering
-    const float motor_left = throttle_scaled + steering_scaled;
-    const float motor_right = throttle_scaled - steering_scaled;
+    float motor_left = throttle_scaled + steering_scaled;
+    float motor_right = throttle_scaled - steering_scaled;
+    // do not take insane values
+    float asymmetry = MAX(_thrust_asymmetry, 0.1f);
+    // TODO: make the change less abrupt
+    // deal with assymetric thrust if any of the thrusters is reversed
+    // if one of them is negative, the other needs to be scaled back
+    motor_left = is_negative(motor_right) ? motor_left / asymmetry : motor_left;
+    motor_right = is_negative(motor_left) ? motor_right / asymmetry : motor_right;
 
     // send pwm value to each motor
     output_throttle(SRV_Channel::k_throttleLeft, 100.0f * motor_left, dt);
