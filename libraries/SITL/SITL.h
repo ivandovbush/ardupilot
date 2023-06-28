@@ -232,6 +232,7 @@ public:
     AP_Int32 mag_devid[MAX_CONNECTED_MAGS]; // Mag devid
     AP_Float buoyancy; // submarine buoyancy in Newtons
     AP_Int16 loop_rate_hz;
+    AP_Float thrust_asymmetry;
 
 #ifdef SFML_JOYSTICK
     AP_Int8 sfml_joystick_id;
