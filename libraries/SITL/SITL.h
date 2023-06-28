@@ -237,6 +237,7 @@ public:
     AP_Int16 loop_time_jitter_us;
     AP_Int32 on_hardware_output_enable_mask;  // mask of output channels passed through to actual hardware
 
+    AP_Float thrust_asymmetry;
     AP_Float uart_byte_loss_pct;
 
 #ifdef SFML_JOYSTICK

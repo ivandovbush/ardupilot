@@ -99,6 +99,9 @@ void SimRover::update(const struct sitl_input &input)
     if (skid_steering) {
         float motor1 = 2*((input.servos[0]-1000)/1000.0f - 0.5f);
         float motor2 = 2*((input.servos[2]-1000)/1000.0f - 0.5f);
+        // if above 0, apply assimetry factor, otherwise leave it as is
+        motor1 = motor1 < 0 ? motor1 / sitl->thrust_asymmetry : motor1;
+        motor2 = motor2 < 0 ? motor2 / sitl->thrust_asymmetry : motor2;
         steering = motor1 - motor2;
         throttle = 0.5*(motor1 + motor2);
     } else {
