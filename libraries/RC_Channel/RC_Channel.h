@@ -295,8 +295,16 @@ public:
         SCRIPTING_7 =        306,
         SCRIPTING_8 =        307,
 
+        // Sub-specific functions
+        LIGHTS1_INC =        308, // increment lights1 brightness
+        LIGHTS1_DEC =        309, // decrement lights1 brightness
+        LIGHTS1_CYCLE =      310, // cycle lights1 brightness
+        LIGHTS2_INC =        311, // increment lights2 brightness
+        LIGHTS2_DEC =        312, // decrement lights2 brightness
+        LIGHTS2_CYCLE =      313, // cycle lights2 brightness
+
         // this must be higher than any aux function above
-        AUX_FUNCTION_MAX =   308,
+        AUX_FUNCTION_MAX =   314,
     };
 
     // auxiliary switch handling (n.b.: we store this as 2-bits!):
