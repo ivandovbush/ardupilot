@@ -25,6 +25,7 @@ public:
 
 protected:
 
+    void set_ekf_origin(const Location& loc);
     uint8_t sysid_this_mav() const override;
 
     // minimum amount of time (in microseconds) that must remain in

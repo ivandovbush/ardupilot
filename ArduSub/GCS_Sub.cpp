@@ -7,6 +7,36 @@ uint8_t GCS_Sub::sysid_this_mav() const
     return sub.g.sysid_this_mav;
 }
 
+// sets ekf_origin if it has not been set.
+//  should only be used when there is no GPS to provide an absolute position
+void GCS_MAVLINK::set_ekf_origin(const Location& loc)
+{
+    // check location is valid
+    if (!loc.check_latlng()) {
+        return;
+    }
+
+    AP_AHRS &ahrs = AP::ahrs();
+
+    // check if EKF origin has already been set
+    Location ekf_origin;
+    if (ahrs.get_origin(ekf_origin)) {
+        return;
+    }
+
+    if (!ahrs.set_origin(loc)) {
+        return;
+    }
+
+    ahrs.Log_Write_Home_And_Origin();
+
+    // send ekf origin to GCS
+    if (!try_send_message(MSG_ORIGIN)) {
+        // try again later
+        send_message(MSG_ORIGIN);
+    }
+}
+
 void GCS_Sub::update_vehicle_sensor_status_flags()
 {
     // mode-specific sensors:

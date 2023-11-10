@@ -346,6 +346,8 @@ public:
 #if AP_SCRIPTING_ENABLED
     AP_Scripting scripting;
 #endif // AP_SCRIPTING_ENABLED
+    AP_Float backup_home_lat;
+    AP_Float backup_home_lon;
 };
 
 extern const AP_Param::Info        var_info[];
