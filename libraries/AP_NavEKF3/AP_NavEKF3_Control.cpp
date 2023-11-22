@@ -661,6 +661,20 @@ bool NavEKF3_core::setOrigin(const Location &loc)
     validOrigin = true;
     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "EKF3 IMU%u origin set",(unsigned)imu_index);
 
+    Vector3f magNED;
+    getMagNED(magNED);
+
+    alignMagStateDeclination();
+    const auto &compass = dal.compass();
+    if (compass.have_scale_factor(magSelectIndex) &&
+        compass.auto_declination_enabled()) {
+        getEarthFieldTable(EKF_origin);
+        if (frontend->_mag_ef_limit > 0) {
+            // initialise earth field from tables
+            stateStruct.earth_magfield = table_earth_field_ga;
+        }
+    }
+
     if (!frontend->common_origin_valid) {
         frontend->common_origin_valid = true;
         // put origin in frontend as well to ensure it stays in sync between lanes
