@@ -58,6 +58,8 @@ public:
     // Sub assumes vehicles are neutrally buoyant
     virtual float get_throttle_hover() const override { return 0.5f; }
 
+    void rc_write(uint8_t chan, uint16_t pwm) override;
+
     // var_info for holding Parameter information
     static const struct AP_Param::GroupInfo        var_info[];
 
