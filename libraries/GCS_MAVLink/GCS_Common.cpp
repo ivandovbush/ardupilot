@@ -3136,7 +3136,7 @@ void GCS_MAVLINK::send_accelcal_vehicle_position(uint32_t position)
     if (HAVE_PAYLOAD_SPACE(chan, COMMAND_LONG)) {
         mavlink_msg_command_long_send(
             chan,
-            0,
+            sysid_my_gcs(),
             0,
             MAV_CMD_ACCELCAL_VEHICLE_POS,
             0,
