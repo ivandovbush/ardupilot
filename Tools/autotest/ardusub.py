@@ -8,10 +8,12 @@ AP_FLAKE8_CLEAN
 '''
 
 from __future__ import print_function
+import math
 import os
 import sys
 
 from pymavlink import mavutil
+from pymavlink import mavextra
 
 import vehicle_test_suite
 from vehicle_test_suite import NotAchievedException
@@ -289,6 +291,42 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
         self.reboot_sitl()
         self.set_rc_default()
         self.wait_ready_to_arm()
+
+
+    def NoYawDrift(self):
+        """ Makes sure we don't have unwaanted yaw drift when operating without a GPS"""
+        self.set_parameters({
+            # lets disable gps
+            "SIM_GPS_DISABLE": 1,
+        })
+
+        def check_yaw_consistency():
+            attitude_yaw = self.mav.recv_match(type='ATTITUDE', blocking=True).yaw
+            sim_yaw = self.mav.recv_match(type='SIMSTATE', blocking=True).yaw
+
+            error_degrees = mavextra.angle_diff(math.degrees(attitude_yaw), math.degrees(sim_yaw))
+            if error_degrees > 10:
+                raise NotAchievedException("Yaw is drifting: attitude_yaw=%frad, sim_yaw=%frad = diff = %fdeg" % (attitude_yaw, sim_yaw, error_degrees))
+
+        self.reboot_sitl()
+
+        # first lets check if ekf and sim yaw are already aligned, for 10 seconds
+        start = self.get_sim_time()
+        self.delay_sim_time(10)
+        while self.get_sim_time() - start < 10:
+            check_yaw_consistency()
+        self.progress("Yaw is not drifting 10 seconds after boot")
+        self.progress("Let's increase GBIAS_NSE in steps and see how the system behaves")
+        for i in range(8):
+            self.set_parameter("SIM_GYR1_BIAS_Z", i*0.1)
+            self.set_parameter("EK3_GBIAS_P_NSE", i*0.1)
+            
+            self.progress("SIM_GYR1_BIAS_Z=%f" % (i*0.1))
+            self.delay_sim_time(10)
+            check_yaw_consistency()
+
+
+
 
     def watch_true_distance_maintained(self, match_distance, delta=0.3, timeout=5.0, final_waypoint=0):
         """Watch and wait for the rangefinder reading to be maintained"""
@@ -846,6 +884,7 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
             self.MAV_CMD_CONDITION_YAW,
             self.TerrainMission,
             self.SetGlobalOrigin,
+            self.NoYawDrift,
         ])
 
         return ret
