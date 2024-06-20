@@ -34,6 +34,22 @@ class Joystick():
     Lateral = 6
 
 
+# Values for EK3_MAG_CAL
+class MagCal():
+    WHEN_FLYING = 0
+    WHEN_MANOEUVRING = 1
+    NEVER = 2
+    AFTER_FIRST_CLIMB = 3
+    ALWAYS = 4
+
+
+# Values for XKMF.S
+class MagFuseSel():
+    NOT_FUSING = 0
+    FUSE_YAW = 1
+    FUSE_MAG = 2
+
+
 class AutoTestSub(vehicle_test_suite.TestSuite):
     @staticmethod
     def get_not_armable_mode_list():
@@ -621,6 +637,152 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
         self._MAV_CMD_CONDITION_YAW(self.run_cmd)
         self._MAV_CMD_CONDITION_YAW(self.run_cmd_int)
 
+    
+    def wait_ekf_happy_const_pos(self, timeout=45):
+        # All of these must be set for arming to happen in constant position mode:
+        required_value = (mavutil.mavlink.EKF_ATTITUDE |
+                          mavutil.mavlink.EKF_VELOCITY_HORIZ |
+                          mavutil.mavlink.EKF_VELOCITY_VERT |
+                          mavutil.mavlink.EKF_POS_VERT_ABS |
+                          mavutil.mavlink.EKF_CONST_POS_MODE)
+
+        # None of these bits must be set for arming to happen:
+        error_bits = mavutil.mavlink.EKF_UNINITIALIZED
+
+        self.wait_ekf_flags(required_value, error_bits, timeout=timeout)
+
+    def wait_ready_to_arm_const_pos(self, timeout=120):
+        self.progress("Waiting for ready to arm (constant position mode)")
+        start = self.get_sim_time()
+        self.wait_ekf_happy_const_pos(timeout=timeout)
+        armable_time = self.get_sim_time() - start
+        self.progress("Took %u seconds to become armable" % armable_time)
+        self.total_waiting_to_arm_time += armable_time
+        self.waiting_to_arm_count += 1
+
+    def collected_msgs(self, msg_type):
+        c = self.context_get()
+        if msg_type not in c.collections:
+            raise NotAchievedException("Not collecting (%s)" % str(msg_type))
+        return c.collections[msg_type]
+
+    def SetGlobalOrigin(self):
+        """Test SET_GPS_GLOBAL_ORIGIN mav msg"""
+        self.context_push()
+        self.set_parameters({
+            'GPS1_TYPE': 0,             # Disable the GPS
+            'EK3_SRC1_POSXY': 0,        # Make sure EK3_SRC parameters do not refer to a GPS
+        })
+        self.reboot_sitl()
+
+        # Wait for the EKF to be happy in constant position mode
+        self.wait_ready_to_arm_const_pos()
+
+        if self.current_onboard_log_contains_message('ORGN'):
+            raise NotAchievedException("Found unexpected ORGN message")
+
+        self.context_collect('GPS_GLOBAL_ORIGIN')
+
+        # This should set the EKF origin, write an ORGN msg to df and a GPS_GLOBAL_ORIGIN msg to MAVLink
+        self.mav.mav.set_gps_global_origin_send(1, int(47.607584 * 1e7), int(-122.343911 * 1e7), 0)
+        self.delay_sim_time(1)
+
+        if not self.current_onboard_log_contains_message('ORGN'):
+            raise NotAchievedException("Did not find expected ORGN message")
+
+        num_mavlink_origin_msgs = len(self.collected_msgs('GPS_GLOBAL_ORIGIN'))
+        if num_mavlink_origin_msgs != 1:
+            raise NotAchievedException("Expected 1 GPS_GLOBAL_ORIGIN message, found %d" % num_mavlink_origin_msgs)
+
+        self.context_pop()
+
+        # restart GPS driver
+        self.reboot_sitl()
+
+    def backup_home(self):
+        """Test ORIGIN_LAT and ORIGIN_LON parameters"""
+
+        self.context_push()
+        self.set_parameters({
+            'GPS1_TYPE': 0,              # Disable GPS
+            'EK3_SRC1_POSXY': 0,        # Make sure EK3_SRC parameters do not refer to GPS
+            'EK3_SRC1_VELXY': 0,        # Make sure EK3_SRC parameters do not refer to GPS
+            'ORIGIN_LAT': 47.607584,
+            'ORIGIN_LON': -122.343911,
+        })
+        self.reboot_sitl()
+        self.context_collect('STATUSTEXT')
+
+        # Wait for the EKF to be happy in constant position mode
+        self.wait_ready_to_arm_const_pos()
+
+        if self.current_onboard_log_contains_message('ORGN'):
+            raise NotAchievedException("Found unexpected ORGN message")
+
+        # This should set the origin and write a record to ORGN
+        self.arm_vehicle()
+
+        self.wait_statustext('Using backup location', check_context=True)
+
+        if not self.current_onboard_log_contains_message('ORGN'):
+            raise NotAchievedException("Did not find expected ORGN message")
+
+        self.disarm_vehicle()
+        self.context_pop()
+
+    def assert_mag_fusion_selection(self, expect_sel):
+        """Get the most recent XKMF message and check the mag fuse selection"""
+        self.progress("Expect mag fusion selection %d" % expect_sel)
+        mlog = self.dfreader_for_current_onboard_log()
+        found_sel = MagFuseSel.NOT_FUSING
+        while True:
+            m = mlog.recv_match(type='XKMF')
+            if m is None:
+                break
+            found_sel = m.S
+            self.progress("Got fusion selection %d" % found_sel)
+        if found_sel != expect_sel:
+            raise NotAchievedException("Expected mag fusion selection %d, found %d" % (expect_sel, found_sel))
+
+    def fuse_mag(self):
+        """Test EK3_MAG_CAL values"""
+        self.context_push()
+
+        # WHEN_FLYING: switch to FUSE_MAG after sub is armed for 5 seconds; switch to FUSE_YAW on disarm
+        self.set_parameters({'EK3_MAG_CAL': MagCal.WHEN_FLYING})
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+        self.assert_mag_fusion_selection(MagFuseSel.FUSE_YAW)
+        self.arm_vehicle()
+        self.delay_sim_time(10)
+        self.assert_mag_fusion_selection(MagFuseSel.FUSE_MAG)
+        self.disarm_vehicle()
+        self.delay_sim_time(1)
+        self.assert_mag_fusion_selection(MagFuseSel.FUSE_YAW)
+
+        # AFTER_FIRST_CLIMB: switch to FUSE_MAG after sub is armed and descends 2.5m; switch to FUSE_YAW on disarm
+        self.set_parameters({'EK3_MAG_CAL': MagCal.AFTER_FIRST_CLIMB})
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+        self.assert_mag_fusion_selection(MagFuseSel.FUSE_YAW)
+        altitude = self.get_altitude(relative=True)
+        self.arm_vehicle()
+        self.set_rc(Joystick.Throttle, 1300)
+        self.wait_altitude(altitude_min=altitude-4, altitude_max=altitude-3, relative=False, timeout=60)
+        self.set_rc(Joystick.Throttle, 1500)
+        self.assert_mag_fusion_selection(MagFuseSel.FUSE_MAG)
+        self.disarm_vehicle()
+        self.delay_sim_time(1)
+        self.assert_mag_fusion_selection(MagFuseSel.FUSE_YAW)
+
+        # ALWAYS
+        self.set_parameters({'EK3_MAG_CAL': MagCal.ALWAYS})
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+        self.assert_mag_fusion_selection(MagFuseSel.FUSE_MAG)
+
+        self.context_pop()
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestSub, self).tests()
@@ -644,6 +806,9 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
             self.MAV_CMD_MISSION_START,
             self.MAV_CMD_DO_CHANGE_SPEED,
             self.MAV_CMD_CONDITION_YAW,
+            self.SetGlobalOrigin,
+            self.backup_home,
+            self.fuse_mag,
         ])
 
         return ret
