@@ -18,7 +18,9 @@ void Sub::motors_output()
         verify_motor_test();
     } else {
         motors.set_interlock(true);
+        SRV_Channels::cork();
         motors.output();
+        SRV_Channels::push();
     }
 }
 
