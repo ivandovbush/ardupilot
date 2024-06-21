@@ -119,8 +119,8 @@ void Sub::transform_manual_control_to_rc_override(int16_t x, int16_t y, int16_t 
         xTot = x + xTrim;
     }
 
-    RC_Channels::set_override(0, constrain_int16(s + pitchTrim + rpyCenter,1100,1900), tnow); // pitch
-    RC_Channels::set_override(1, constrain_int16(t + rollTrim  + rpyCenter,1100,1900), tnow); // roll
+    // RC_Channels::set_override(0, constrain_int16(s + pitchTrim + rpyCenter,1100,1900), tnow); // pitch
+    // RC_Channels::set_override(1, constrain_int16(t + rollTrim  + rpyCenter,1100,1900), tnow); // roll
 
     RC_Channels::set_override(2, constrain_int16((zTot)*throttleScale+throttleBase,1100,1900), tnow); // throttle
     RC_Channels::set_override(3, constrain_int16(r*rpyScale+rpyCenter,1100,1900), tnow);                 // yaw
@@ -141,6 +141,9 @@ void Sub::transform_manual_control_to_rc_override(int16_t x, int16_t y, int16_t 
     RC_Channels::set_override(8, lights1, tnow);       // lights 1
     RC_Channels::set_override(9, lights2, tnow);       // lights 2
     RC_Channels::set_override(10, video_switch, tnow); // video switch
+    RC_Channels::set_override(11, s, tnow); // s as aux
+    RC_Channels::set_override(12, t, tnow); // t as aux
+    
 
     // Store old x, y, z values for use in input hold logic
     x_last = x;
