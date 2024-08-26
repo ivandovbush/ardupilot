@@ -10,13 +10,14 @@ AP_FLAKE8_CLEAN
 from __future__ import print_function
 import os
 import sys
-
+import time
 from pymavlink import mavutil
 
 import vehicle_test_suite
 from vehicle_test_suite import NotAchievedException
 from vehicle_test_suite import AutoTestTimeoutException
 from vehicle_test_suite import PreconditionFailedException
+from vehicle_test_suite import MAV_POS_TARGET_TYPE_MASK
 
 if sys.version_info[0] < 3:
     ConnectionResetError = AutoTestTimeoutException
@@ -946,11 +947,122 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
         self.wait_ready_to_arm()
         self.assert_mag_fusion_selection(MagFuseSel.FUSE_MAG)
 
+
+    def fly_guided_move_local(self, x, y, z_up, timeout=100):
+        """move the vehicle using MAVLINK_MSG_ID_SET_POSITION_TARGET_LOCAL_NED"""
+        startpos = self.mav.recv_match(type='LOCAL_POSITION_NED', blocking=True)
+        self.progress("startpos=%s" % str(startpos))
+
+        tstart = self.get_sim_time()
+        # send a position-control command
+        self.mav.mav.set_position_target_local_ned_send(
+            0, # timestamp
+            1, # target system_id
+            1, # target component id
+            mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+            MAV_POS_TARGET_TYPE_MASK.POS_ONLY | MAV_POS_TARGET_TYPE_MASK.LAST_BYTE, # mask specifying use-only-x-y-z
+            x, # x
+            y, # y
+            -z_up, # z
+            0, # vx
+            0, # vy
+            0, # vz
+            0, # afx
+            0, # afy
+            0, # afz
+            0, # yaw
+            0, # yawrate
+        )
+        while True:
+            if self.get_sim_time_cached() - tstart > timeout:
+                raise NotAchievedException("Did not reach destination")
+            self.progress("distance=%f" % self.distance_to_local_position((x, y, -z_up)))
+            if self.distance_to_local_position((x, y, -z_up)) < 1:
+                break
+
+
+    def DvlGpsSwitching(self):
+        """Disable GPS navigation, enable input of VISION_POSITION_DELTA."""
+        # point North
+        self.reach_heading_manual(0)
+        self.change_mode('ALT_HOLD')
+
+        self.customise_SITL_commandline(["--serial5=sim:vicon:"])
+
+        self.install_example_script_context("gps_dvl_switching.lua")
+        self.set_parameters({
+            "SCR_ENABLE": 1,
+            "VISO_TYPE": 1,
+            "SERIAL5_PROTOCOL": 1,
+            "SIM_VICON_TMASK": 8,
+            "SIM_VICON_FAIL": 0,
+            "EK3_SRC1_YAW": 1,
+            "EK3_SRC2_YAW": 1,
+        })
+
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+        # dive a little
+        self.set_rc(Joystick.Throttle, 1300)
+        self.delay_sim_time(10)
+        self.set_rc(Joystick.Throttle, 1500)
+        self.delay_sim_time(2)
+        # move forward
+        self.set_rc(Joystick.Forward, 1800)
+        self.delay_sim_time(10)
+        # disabling the VICON here causes the EKF to get lost for 10 seconds
+        # which causes a large jump in the GPS position when surfacing
+        self.set_parameter("SIM_VICON_FAIL", 1)
+        self.delay_sim_time(10)
+        self.set_rc(Joystick.Forward, 1500)
+        self.delay_sim_time(10)
+        self.set_parameter("SIM_VICON_FAIL", 0)
+        
+        
+        self.drain_mav()
+        msg = self.mav.recv_match(type='GLOBAL_POSITION_INT', blocking=True, timeout=5)
+        if msg is None:
+            raise NotAchievedException("Did not get GLOBAL_POSITION_INT")
+        pre_jump_location = mavutil.location(lat=msg.lat*1e-7, lng=msg.lon*1e-7, alt=0)
+        self.set_rc(Joystick.Throttle, 1800)
+        self.delay_sim_time(10)
+        # Save starting point
+        self.drain_mav()
+        msg = self.mav.recv_match(type='GLOBAL_POSITION_INT', blocking=True, timeout=5)
+        if msg is None:
+            raise NotAchievedException("Did not get GLOBAL_POSITION_INT")
+        post_jump_location = mavutil.location(lat=msg.lat*1e-7, lng=msg.lon*1e-7, alt=0)
+        self.progress(f"jump_size = {self.get_distance(post_jump_location, pre_jump_location)}")
+        # we expect a jump 
+        assert self.get_distance(post_jump_location, pre_jump_location) > 5, "Expected a jump larger than 5 meters in the GPS position"
+
+        # dive a little
+        self.set_rc(Joystick.Throttle, 1300)
+        self.delay_sim_time(10)
+        self.set_rc(Joystick.Throttle, 1500)
+        self.delay_sim_time(2)
+        self.drain_mav()
+        msg = self.mav.recv_match(type='GLOBAL_POSITION_INT', blocking=True, timeout=5)
+        if msg is None:
+            raise NotAchievedException("Did not get GLOBAL_POSITION_INT")
+        post_dive_location = mavutil.location(lat=msg.lat*1e-7, lng=msg.lon*1e-7, alt=0)
+        assert self.get_distance(post_dive_location, post_jump_location) < 1, "No drift was expected after diving"
+        # move forward
+        self.set_rc(Joystick.Forward, 1800)
+        self.delay_sim_time(10)
+        self.set_rc(Joystick.Throttle, 1800)
+        self.delay_sim_time(10)
+        # surface
+        # Hold in perfect conditions
+        self.disarm_vehicle()
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestSub, self).tests()
 
         ret.extend([
+            self.DvlGpsSwitching,
             self.DiveManual,
             self.AltitudeHold,
             self.Surftrak,

@@ -343,7 +343,7 @@ void GPS::update()
     struct GPS_Data d {};
 
     // simulate delayed lock times
-    bool have_lock = (!_sitl->gps_disable[idx] && now_ms >= _sitl->gps_lock_time[idx]*1000UL);
+    bool have_lock = (!_sitl->gps_disable[idx] && now_ms >= _sitl->gps_lock_time[idx]*1000UL) && altitude > -1;
 
     // Only let physics run and GPS write at configured GPS rate (default 5Hz).
     if ((now_ms - last_write_update_ms) < (uint32_t)(1000/_sitl->gps_hertz[instance])) {

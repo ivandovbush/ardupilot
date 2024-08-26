@@ -231,7 +231,7 @@ void GPS_UBlox::publish(const GPS_Data *d)
     dop.pDOP = 65535;
     dop.tDOP = 65535;
     dop.vDOP = 200;
-    dop.hDOP = 121;
+    dop.hDOP = d->altitude > -1 ? 121 : 1000;
     dop.nDOP = 65535;
     dop.eDOP = 65535;
 
