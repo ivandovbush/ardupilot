@@ -111,6 +111,7 @@ protected:
     RC_Channel *&channel_lateral;
     AC_PosControl *position_control;
     AC_AttitudeControl_Sub *attitude_control;
+    uint32_t last_control_mode_update_us; // dt tracking for control mode updates
     // TODO: channels
     float &G_Dt;
 

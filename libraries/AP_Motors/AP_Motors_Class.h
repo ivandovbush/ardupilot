@@ -309,6 +309,7 @@ protected:
       SERVOn_FUNCTION mappings, and allowing for multiple outputs per
       motor number
     */
+    uint32_t    motor_mask_to_srv_channel_mask(uint32_t mask) const;
 
     // add a motor to the motor map
     void add_motor_num(int8_t motor_num);
@@ -318,12 +319,6 @@ protected:
 
     // save parameters as part of disarming
     virtual void save_params_on_disarm() {}
-
-    // convert input in -1 to +1 range to pwm output
-    int16_t calc_pwm_output_1to1(float input, const SRV_Channel *servo);
-
-    // convert input in 0 to +1 range to pwm output
-    int16_t calc_pwm_output_0to1(float input, const SRV_Channel *servo);
 
     // Apply rate of change limiting to an input
     // max_rate is the maximum allowed rate of change as a percentage of the range per second

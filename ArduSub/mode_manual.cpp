@@ -33,6 +33,7 @@ void ModeManual::run()
     sub.motors.set_forward(channel_forward->norm_input());
     sub.motors.set_lateral(channel_lateral->norm_input());
 
-    float dt =  ((float)(micros() - last_control_mode_update_us)) / 1e6;
+    float dt =  ((AP_HAL::micros() - this->last_control_mode_update_us)) / 1e6;
     motors.limit_demand_slew_rate(g.manual_slew_rate, dt);
+    last_control_mode_update_us = AP_HAL::micros();
 }
