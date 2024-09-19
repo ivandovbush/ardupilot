@@ -946,6 +946,38 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
         self.wait_ready_to_arm()
         self.assert_mag_fusion_selection(MagFuseSel.FUSE_MAG)
 
+    def PosHoldBounceBack(self):
+        """Test for bounce back in POSHOLD mode"""
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        # dive a little
+        self.set_rc(Joystick.Throttle, 1300)
+        self.delay_sim_time(3)
+        self.set_rc(Joystick.Throttle, 1500)
+        self.delay_sim_time(2)
+
+        # hold position
+        self.change_mode('POSHOLD')
+
+        # move forward at different rates, look for bounce back
+        for pwm in range(1550, 1900, 50):
+            self.set_rc(Joystick.Forward, pwm)
+            self.delay_sim_time(3)
+
+            # stop, get position immediately
+            self.set_rc(Joystick.Forward, 1500)
+            start_pos = self.mav.location()
+
+            # sub should hold or perhaps drift forward a little, but it should not bounce back
+            # TODO should test for backward motion, but this simple test also works for now
+            self.delay_sim_time(10)
+            distance_m = self.get_distance(start_pos, self.mav.location())
+            if distance_m > 1:
+                raise NotAchievedException("PosHold bounce back test at {} pwm, distance {}m exceeded 1m".format(pwm, distance_m))  # noqa
+
+        self.disarm_vehicle()
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestSub, self).tests()
@@ -977,6 +1009,7 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
             self.SetGlobalOrigin,
             self.backup_origin,
             self.fuse_mag,
+            self.PosHoldBounceBack,
         ])
 
         return ret
