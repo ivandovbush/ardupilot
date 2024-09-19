@@ -203,6 +203,8 @@ void Sub::ten_hz_logging_loop()
     }
     if (should_log(MASK_LOG_NTUN) && (sub.flightmode->requires_GPS() || !sub.flightmode->has_manual_throttle())) {
         pos_control.write_log();
+        logger.Write_PID(LOG_PIDN_MSG, pos_control.get_vel_xy_pid().get_pid_info_x());
+        logger.Write_PID(LOG_PIDE_MSG, pos_control.get_vel_xy_pid().get_pid_info_y());
     }
     if (should_log(MASK_LOG_IMU) || should_log(MASK_LOG_IMU_FAST) || should_log(MASK_LOG_IMU_RAW)) {
         AP::ins().Write_Vibration();
