@@ -127,6 +127,9 @@ public:
 #if AP_SIM_GPS_TRIMBLE_ENABLED
         TRIMBLE  = 11, // matches GPS1_TYPE
 #endif
+#if AP_SIM_GPS_MAV_ENABLED
+        MAV  = 12,
+#endif
 #if AP_SIM_GPS_MSP_ENABLED
         MSP   = 19,
 #endif

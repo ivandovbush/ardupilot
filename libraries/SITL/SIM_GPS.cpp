@@ -287,6 +287,11 @@ void GPS::check_backend_allocation()
         backend = NEW_NOTHROW GPS_FILE(*this, instance);
         break;
 #endif
+#if AP_SIM_GPS_MAV_ENABLED
+    case Type::MAV:
+        backend = NEW_NOTHROW GPS_MAV(*this, instance);
+        break;
+#endif
     };
 
     if (configured_type != Type::NONE && backend == nullptr) {
