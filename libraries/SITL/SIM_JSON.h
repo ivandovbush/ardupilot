@@ -24,12 +24,14 @@
 
 #include <AP_HAL/utility/Socket_native.h>
 #include "SIM_Aircraft.h"
+#include "SIM_JSON_WebSocket.h"
 
 namespace SITL {
 
 class JSON : public Aircraft {
 public:
     JSON(const char *frame_str);
+    ~JSON();
 
     /* update model by one time step */
     void update(const struct sitl_input &input) override;
@@ -43,6 +45,10 @@ public:
     void set_interface_ports(const char* address, const int port_in, const int port_out) override;
 
 private:
+    enum class TransportType {
+        UDP,
+        WEBSOCKET
+    };
 
     struct servo_packet_16 {
         uint16_t magic = 18458; // constant magic value
@@ -64,7 +70,11 @@ private:
     // default connection_info_.sitl_ip_port
     uint16_t control_port = 9002;
 
-    SocketAPM_native sock;
+    SocketAPM_native sock;  // UDP socket
+#if HAL_SIM_WEBSOCKET_ENABLED
+    JSONWebSocket* websock;  // WebSocket connection
+#endif
+    TransportType transport_type;
 
     uint32_t frame_counter;
     double last_timestamp_s;

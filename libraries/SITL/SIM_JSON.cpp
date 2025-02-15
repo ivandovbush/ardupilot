@@ -59,17 +59,30 @@ static const struct {
 
 JSON::JSON(const char *frame_str) :
     Aircraft(frame_str),
-    sock(true)
+    sock(true),
+#if HAL_SIM_WEBSOCKET_ENABLED
+    websock(nullptr),
+#endif
+    transport_type(TransportType::UDP)
 {
     printf("Starting SITL: JSON\n");
 
     const char *colon = strchr(frame_str, ':');
     if (colon) {
         target_ip = colon+1;
+        printf("Target IP: %s\n", target_ip);
+        if (strncmp(target_ip, "ws://", 5) == 0) {
+#if HAL_SIM_WEBSOCKET_ENABLED
+            transport_type = TransportType::WEBSOCKET;
+            target_ip += 5;  // Skip the ws:// prefix
+#else
+            printf("WebSocket support not enabled\n");
+#endif
+        }
     }
 
     for (uint8_t i=0; i<ARRAY_SIZE(sim_defaults); i++) {
-    AP_Param::set_default_by_name(sim_defaults[i].name, sim_defaults[i].value);
+        AP_Param::set_default_by_name(sim_defaults[i].name, sim_defaults[i].value);
         if (sim_defaults[i].save) {
             enum ap_var_type ptype;
             AP_Param *p = AP_Param::find(sim_defaults[i].name, &ptype);
@@ -80,20 +93,56 @@ JSON::JSON(const char *frame_str) :
     }
 }
 
+JSON::~JSON()
+{
+#if HAL_SIM_WEBSOCKET_ENABLED
+    if (websock != nullptr) {
+        delete websock;
+    }
+#endif
+}
+
 /*
     Create & set in/out socket
 */
 void JSON::set_interface_ports(const char* address, const int port_in, const int port_out)
 {
-    sock.set_blocking(false);
-    sock.reuseaddress();
+    printf("JSON::set_interface_ports - address: %s, port_in: %d, port_out: %d, transport: %s\n",
+           address, port_in, port_out, 
+           transport_type == TransportType::UDP ? "UDP" : "WebSocket");
+
+    if (transport_type == TransportType::UDP) {
+        sock.set_blocking(false);
+        sock.reuseaddress();
+    }
+#if HAL_SIM_WEBSOCKET_ENABLED
+    else {
+        printf("Starting WebSocket server...\n");
+        if (websock == nullptr) {
+            websock = new JSONWebSocket();
+            printf("WebSocket object created\n");
+        }
+    }
+#endif
 
     if (strcmp("127.0.0.1",address) != 0) {
         target_ip = address;
     }
     control_port = port_out;
 
-    printf("JSON control interface set to %s:%u\n", target_ip, control_port);
+    if (transport_type == TransportType::UDP) {
+        printf("JSON UDP control interface set to %s:%u\n", target_ip, control_port);
+    }
+#if HAL_SIM_WEBSOCKET_ENABLED
+    else {
+        printf("Starting WebSocket server on %s:%u\n", target_ip, control_port);
+        if (!websock->connect(target_ip, control_port)) {
+            printf("Failed to start WebSocket server on %s:%u\n", target_ip, control_port);
+        } else {
+            printf("WebSocket server ready and listening\n");
+        }
+    }
+#endif
 }
 
 /*
@@ -103,36 +152,59 @@ void JSON::output_servos(const struct sitl_input &input)
 {
     size_t pkt_size = 0;
     ssize_t send_ret = -1;
+
     if (SRV_Channels::have_32_channels()) {
-      servo_packet_32 pkt;
-      pkt.frame_rate = rate_hz;
-      pkt.frame_count = frame_counter;
-      for (uint8_t i=0; i<32; i++) {
-          pkt.pwm[i] = input.servos[i];
-      }
-      pkt_size = sizeof(pkt);
-      send_ret = sock.sendto(&pkt, pkt_size, target_ip, control_port);
+        servo_packet_32 pkt;
+        pkt.frame_rate = rate_hz;
+        pkt.frame_count = frame_counter;
+        for (uint8_t i=0; i<32; i++) {
+            pkt.pwm[i] = input.servos[i];
+        }
+        pkt_size = sizeof(pkt);
+
+        if (transport_type == TransportType::UDP) {
+            send_ret = sock.sendto(&pkt, pkt_size, target_ip, control_port);
+        }
+#if HAL_SIM_WEBSOCKET_ENABLED
+        else if (websock != nullptr) {
+            printf("Attempting to send servo data via WebSocket (%zu bytes)...\n", pkt_size);
+            send_ret = websock->send(&pkt, pkt_size);
+            if (send_ret <= 0) {
+                printf("WebSocket send failed with ret=%zd\n", send_ret);
+            } else {
+                printf("WebSocket sent %zd bytes\n", send_ret);
+            }
+        }
+#endif
     } else {
-      servo_packet_16 pkt;
-      pkt.frame_rate = rate_hz;
-      pkt.frame_count = frame_counter;
-      for (uint8_t i=0; i<16; i++) {
-          pkt.pwm[i] = input.servos[i];
-      }
-      pkt_size = sizeof(pkt);
-      send_ret = sock.sendto(&pkt, pkt_size, target_ip, control_port);
+        servo_packet_16 pkt;
+        pkt.frame_rate = rate_hz;
+        pkt.frame_count = frame_counter;
+        for (uint8_t i=0; i<16; i++) {
+            pkt.pwm[i] = input.servos[i];
+        }
+        pkt_size = sizeof(pkt);
+
+        if (transport_type == TransportType::UDP) {
+            send_ret = sock.sendto(&pkt, pkt_size, target_ip, control_port);
+        }
+#if HAL_SIM_WEBSOCKET_ENABLED
+        else if (websock != nullptr) {
+            send_ret = websock->send(&pkt, pkt_size);
+        }
+#endif
     }
 
     if ((size_t)send_ret != pkt_size) {
         if (send_ret <= 0) {
-            printf("Unable to send servo output to %s:%u - Error: %s, Return value: %ld\n",
-                   target_ip, control_port, strerror(errno), (long)send_ret);
+            printf("Unable to send servo output to %s:%u - Error: %s, Return value: %ld (transport: %s)\n",
+                   target_ip, control_port, strerror(errno), (long)send_ret,
+                   transport_type == TransportType::UDP ? "UDP" : "WebSocket");
         } else {
             printf("Sent %ld bytes instead of %lu bytes\n", (long)send_ret, (unsigned long)pkt_size);
         }
     }
 }
-
 
 /*
     very simple JSON parser for sensor data
@@ -178,17 +250,14 @@ uint32_t JSON::parse_sensors(const char *json)
         switch (key.type) {
             case DATA_UINT64:
                 *((uint64_t *)key.ptr) = strtoull(p, nullptr, 10);
-                //printf("%s/%s = %lu\n", key.section, key.key, *((uint64_t *)key.ptr));
                 break;
 
             case DATA_FLOAT:
                 *((float *)key.ptr) = atof(p);
-                //printf("%s/%s = %f\n", key.section, key.key, *((float *)key.ptr));
                 break;
 
             case DATA_DOUBLE:
                 *((double *)key.ptr) = atof(p);
-                //printf("%s/%s = %f\n", key.section, key.key, *((double *)key.ptr));
                 break;
 
             case DATA_VECTOR3F: {
@@ -197,7 +266,6 @@ uint32_t JSON::parse_sensors(const char *json)
                     printf("Failed to parse Vector3f for %s/%s\n", key.section, key.key);
                     return received_bitmask;
                 }
-                //printf("%s/%s = %f, %f, %f\n", key.section, key.key, v->x, v->y, v->z);
                 break;
             }
 
@@ -207,7 +275,6 @@ uint32_t JSON::parse_sensors(const char *json)
                     printf("Failed to parse Vector3f for %s/%s\n", key.section, key.key);
                     return received_bitmask;
                 }
-                //printf("%s/%s = %f, %f, %f\n", key.section, key.key, v->x, v->y, v->z);
                 break;
             }
 
@@ -222,9 +289,7 @@ uint32_t JSON::parse_sensors(const char *json)
 
             case BOOLEAN:
                 *((bool *)key.ptr) = strtoull(p, nullptr, 10) != 0;
-                //printf("%s/%s = %i\n", key.section, key.key, *((unit8_t *)key.ptr));
                 break;
-
         }
     }
 
@@ -238,16 +303,40 @@ uint32_t JSON::parse_sensors(const char *json)
 void JSON::recv_fdm(const struct sitl_input &input)
 {
     // Receive sensor packet
-    ssize_t ret = sock.recv(&sensor_buffer[sensor_buffer_len], sizeof(sensor_buffer)-sensor_buffer_len, UDP_TIMEOUT_MS);
+    ssize_t ret;
+    if (transport_type == TransportType::UDP) {
+        ret = sock.recv(&sensor_buffer[sensor_buffer_len], sizeof(sensor_buffer)-sensor_buffer_len, UDP_TIMEOUT_MS);
+    }
+#if HAL_SIM_WEBSOCKET_ENABLED
+    else if (websock != nullptr) {
+        printf("Attempting to receive data via WebSocket...\n");
+        ret = websock->recv(&sensor_buffer[sensor_buffer_len], sizeof(sensor_buffer)-sensor_buffer_len, UDP_TIMEOUT_MS);
+        if (ret <= 0) {
+            printf("WebSocket receive failed with ret=%zd\n", ret);
+        } else {
+            printf("WebSocket received %zd bytes\n", ret);
+        }
+    }
+#endif
+    else {
+        ret = -1;
+    }
+
     uint32_t wait_ms = UDP_TIMEOUT_MS;
     while (ret <= 0) {
-        //printf("No JSON sensor message received - %s\n", strerror(errno));
-        ret = sock.recv(&sensor_buffer[sensor_buffer_len], sizeof(sensor_buffer)-sensor_buffer_len, UDP_TIMEOUT_MS);
+        if (transport_type == TransportType::UDP) {
+            ret = sock.recv(&sensor_buffer[sensor_buffer_len], sizeof(sensor_buffer)-sensor_buffer_len, UDP_TIMEOUT_MS);
+        }
+#if HAL_SIM_WEBSOCKET_ENABLED
+        else if (websock != nullptr) {
+            ret = websock->recv(&sensor_buffer[sensor_buffer_len], sizeof(sensor_buffer)-sensor_buffer_len, UDP_TIMEOUT_MS);
+        }
+#endif
         wait_ms += UDP_TIMEOUT_MS;
-        // if no sensor message is received after 10 second resend servos, this help cope with SITL and the physics getting out of sync
         if (wait_ms > 1000) {
             wait_ms = 0;
-            printf("No JSON sensor message received, resending servos\n");
+            printf("No JSON sensor message received, resending servos (transport: %s)\n",
+                   transport_type == TransportType::UDP ? "UDP" : "WebSocket");
             output_servos(input);
         }
     }
@@ -320,10 +409,8 @@ void JSON::recv_fdm(const struct sitl_input &input)
     if ((received_bitmask & AIRSPEED)) {
         // received airspeed directly
         airspeed = state.airspeed;
-
         airspeed_pitot = state.airspeed;
     } else {
-        
         // wind is not supported yet for JSON sim, assume zero for now        
         wind_ef.zero(); 
 
@@ -377,71 +464,6 @@ void JSON::recv_fdm(const struct sitl_input &input)
     }
     last_timestamp_s = state.timestamp_s;
     frame_counter++;
-
-#if 0
-
-    float roll, pitch, yaw;
-    if ((received_bitmask & QUAT_ATT) != 0) {
-        dcm.to_euler(&roll, &pitch, &yaw);
-    } else {
-        roll = state.attitude[0];
-        pitch = state.attitude[1];
-        yaw = state.attitude[2];
-    }
-
-// @LoggerMessage: JSN1
-// @Description: Log data received from JSON simulator
-// @Field: TimeUS: Time since system startup (us)
-// @Field: TStamp: Simulation's timestamp (s)
-// @Field: R: Simulation's roll (rad)
-// @Field: P: Simulation's pitch (rad)
-// @Field: Y: Simulation's yaw (rad)
-// @Field: GX: Simulated gyroscope, X-axis (rad/sec)
-// @Field: GY: Simulated gyroscope, Y-axis (rad/sec)
-// @Field: GZ: Simulated gyroscope, Z-axis (rad/sec)
-    AP::logger().WriteStreaming("JSN1", "TimeUS,TStamp,R,P,Y,GX,GY,GZ",
-                       "ssrrrEEE",
-                       "F???????",
-                       "Qfffffff",
-                       AP_HAL::micros64(),
-                       state.timestamp_s,
-                       roll,
-                       pitch,
-                       yaw,
-                       gyro.x,
-                       gyro.y,
-                       gyro.z);
-
-    Vector3f accel_ef = dcm.transposed() * accel_body;
-
-// @LoggerMessage: JSN2
-// @Description: Log data received from JSON simulator
-// @Field: TimeUS: Time since system startup (us)
-// @Field: VN: simulation's velocity, North-axis (m/s)
-// @Field: VE: simulation's velocity, East-axis (m/s)
-// @Field: VD: simulation's velocity, Down-axis (m/s)
-// @Field: AX: simulation's acceleration, X-axis (m/s^2)
-// @Field: AY: simulation's acceleration, Y-axis (m/s^2)
-// @Field: AZ: simulation's acceleration, Z-axis (m/s^2)
-// @Field: AN: simulation's acceleration, North (m/s^2)
-// @Field: AE: simulation's acceleration, East (m/s^2)
-// @Field: AD: simulation's acceleration, Down (m/s^2)
-    AP::logger().WriteStreaming("JSN2", "TimeUS,VN,VE,VD,AX,AY,AZ,AN,AE,AD",
-                       "snnnoooooo",
-                       "F?????????",
-                       "Qfffffffff",
-                       AP_HAL::micros64(),
-                       velocity_ef.x,
-                       velocity_ef.y,
-                       velocity_ef.z,
-                       accel_body.x,
-                       accel_body.y,
-                       accel_body.z,
-                       accel_ef.x,
-                       accel_ef.y,
-                       accel_ef.z);
-#endif
-
 }
 
 /*
@@ -461,13 +483,6 @@ void JSON::update(const struct sitl_input &input)
 
     // allow for changes in physics step
     adjust_frame_time(constrain_float(sitl->loop_rate_hz, rate_hz-1, rate_hz+1));
-
-#if 0
-    // report frame rate
-    if (frame_counter % 1000 == 0) {
-        printf("FPS %.2f\n", rate_hz); // this is instantaneous rather than any clever average
-    }
-#endif
 }
 
 #endif  // HAL_SIM_JSON_ENABLED
