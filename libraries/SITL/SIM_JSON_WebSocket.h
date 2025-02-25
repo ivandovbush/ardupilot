@@ -41,37 +41,38 @@ public:
     // Initialize and start the WebSocket server
     bool connect(const char* address, uint16_t port);
 
-    // Send data to connected client
+    // Send data to all connected clients
     ssize_t send(const void* buffer, size_t size);
 
-    // Receive data from connected client with timeout
+    // Receive data from any connected client with timeout
     ssize_t recv(void* buffer, size_t size, uint32_t timeout_ms);
 
-    // Check if client is connected
-    bool is_connected() const { return client_fd >= 0; }
-
-    // Close connection
+    // Close all connections
     void close();
 
 private:
     static constexpr size_t BUFFER_SIZE = 4096;
     static constexpr size_t MAX_HEADER_SIZE = 1024;
+    static constexpr size_t MAX_CLIENTS = 10;  // Maximum number of simultaneous clients
 
-    int server_fd;  // Server socket file descriptor
-    int client_fd;  // Client socket file descriptor
+    struct ClientInfo {
+        int fd;                     // Client socket file descriptor
+        bool handshake_complete;    // Whether WebSocket handshake is complete
+        uint8_t rx_buffer[BUFFER_SIZE];  // Receive buffer for this client
+        size_t rx_buffer_filled;    // Amount of data in receive buffer
+        bool active;                // Whether this client slot is in use
+    };
+
+    int server_fd;                  // Server socket file descriptor
+    ClientInfo clients[MAX_CLIENTS];  // Array of client connections
     
     // WebSocket handshake and frame handling
-    bool handle_handshake();
-    bool decode_websocket_frame(uint8_t* buffer, size_t size, uint8_t* payload, size_t& payload_length);
-    bool encode_websocket_frame(const uint8_t* payload, size_t payload_length, uint8_t* frame, size_t& frame_length);
+    bool handle_handshake(ClientInfo& client);
+    void check_new_connections();
+    void remove_client(size_t client_idx);
+    ssize_t send_to_client(const ClientInfo& client, const void* buffer, size_t size);
     
     // Helper functions
-    std::string generate_websocket_key(const char* client_key);
-    void accept_client();
-    
-    uint8_t rx_buffer[BUFFER_SIZE];
-    size_t rx_buffer_filled;
-
     std::string base64_encode(const std::string& input);
     std::string generate_websocket_accept(const std::string& key);
     std::vector<uint8_t> parse_websocket_frame(const std::vector<uint8_t>& data, bool& is_text);

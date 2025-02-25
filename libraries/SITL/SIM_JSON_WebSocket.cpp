@@ -132,11 +132,16 @@ std::string SHA1::final() {
 
 // JSONWebSocket implementation
 JSONWebSocket::JSONWebSocket() :
-    server_fd(-1),
-    client_fd(-1),
-    rx_buffer_filled(0)
+    server_fd(-1)
 {
     printf("JSONWebSocket: Initializing server\n");
+    // Initialize client array
+    for (size_t i = 0; i < MAX_CLIENTS; i++) {
+        clients[i].fd = -1;
+        clients[i].handshake_complete = false;
+        clients[i].rx_buffer_filled = 0;
+        clients[i].active = false;
+    }
 }
 
 JSONWebSocket::~JSONWebSocket() {
@@ -221,7 +226,7 @@ bool JSONWebSocket::connect(const char* address, uint16_t port) {
         return false;
     }
 
-    if (listen(server_fd, 1) < 0) {
+    if (listen(server_fd, MAX_CLIENTS) < 0) {
         printf("Failed to listen on WebSocket server socket\n");
         close();
         return false;
@@ -235,9 +240,46 @@ bool JSONWebSocket::connect(const char* address, uint16_t port) {
     return true;
 }
 
-bool JSONWebSocket::handle_handshake() {
+void JSONWebSocket::check_new_connections() {
+    sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    
+    // Try to accept new connection
+    int new_fd = accept(server_fd, reinterpret_cast<struct sockaddr*>(&client_addr), &client_len);
+    if (new_fd < 0) {
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            printf("Failed to accept WebSocket client connection\n");
+        }
+        return;
+    }
+
+    // Find free client slot
+    int slot = -1;
+    for (size_t i = 0; i < MAX_CLIENTS; i++) {
+        if (!clients[i].active) {
+            slot = i;
+            break;
+        }
+    }
+
+    if (slot == -1) {
+        printf("No free client slots available, rejecting connection\n");
+        ::close(new_fd);
+        return;
+    }
+
+    // Initialize new client
+    clients[slot].fd = new_fd;
+    clients[slot].handshake_complete = false;
+    clients[slot].rx_buffer_filled = 0;
+    clients[slot].active = true;
+
+    printf("New WebSocket client connected (slot %d)\n", slot);
+}
+
+bool JSONWebSocket::handle_handshake(ClientInfo& client) {
     char buffer[MAX_HEADER_SIZE];
-    ssize_t bytes_read = ::recv(client_fd, buffer, sizeof(buffer)-1, 0);
+    ssize_t bytes_read = ::recv(client.fd, buffer, sizeof(buffer)-1, 0);
     if (bytes_read <= 0) {
         return false;
     }
@@ -259,7 +301,141 @@ bool JSONWebSocket::handle_handshake() {
         "Connection: Upgrade\r\n"
         "Sec-WebSocket-Accept: " + accept_key + "\r\n\r\n";
 
-    return ::send(client_fd, response.c_str(), response.length(), 0) > 0;
+    return ::send(client.fd, response.c_str(), response.length(), 0) > 0;
+}
+
+void JSONWebSocket::remove_client(size_t client_idx) {
+    if (clients[client_idx].fd >= 0) {
+        ::close(clients[client_idx].fd);
+    }
+    clients[client_idx].fd = -1;
+    clients[client_idx].handshake_complete = false;
+    clients[client_idx].rx_buffer_filled = 0;
+    clients[client_idx].active = false;
+    printf("WebSocket client disconnected (slot %zu)\n", client_idx);
+}
+
+ssize_t JSONWebSocket::send_to_client(const ClientInfo& client, const void* buffer, size_t size) {
+    std::vector<uint8_t> payload(static_cast<const uint8_t*>(buffer), 
+                                static_cast<const uint8_t*>(buffer) + size);
+    std::vector<uint8_t> frame = create_websocket_frame(payload, false);
+    return ::send(client.fd, frame.data(), frame.size(), 0);
+}
+
+ssize_t JSONWebSocket::send(const void* buffer, size_t size) {
+    check_new_connections();
+
+    ssize_t total_sent = 0;
+    bool any_success = false;
+
+    // Send to all connected clients
+    for (size_t i = 0; i < MAX_CLIENTS; i++) {
+        if (!clients[i].active) {
+            continue;
+        }
+
+        if (!clients[i].handshake_complete) {
+            if (!handle_handshake(clients[i])) {
+                remove_client(i);
+                continue;
+            }
+            clients[i].handshake_complete = true;
+        }
+
+        ssize_t sent = send_to_client(clients[i], buffer, size);
+        if (sent > 0) {
+            total_sent += sent;
+            any_success = true;
+        } else {
+            remove_client(i);
+        }
+    }
+
+    return any_success ? total_sent : -1;
+}
+
+ssize_t JSONWebSocket::recv(void* buffer, size_t size, uint32_t timeout_ms) {
+    check_new_connections();
+
+    fd_set read_fds;
+    struct timeval tv;
+    int max_fd = server_fd;
+    
+    FD_ZERO(&read_fds);
+    FD_SET(server_fd, &read_fds);
+
+    // Add all active clients to fd_set
+    for (size_t i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active && clients[i].fd >= 0) {
+            FD_SET(clients[i].fd, &read_fds);
+            max_fd = std::max(max_fd, clients[i].fd);
+        }
+    }
+
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+    int ret = select(max_fd + 1, &read_fds, nullptr, nullptr, &tv);
+    if (ret <= 0) {
+        return ret;
+    }
+
+    // Check each client for data
+    for (size_t i = 0; i < MAX_CLIENTS; i++) {
+        if (!clients[i].active || clients[i].fd < 0) {
+            continue;
+        }
+
+        if (!FD_ISSET(clients[i].fd, &read_fds)) {
+            continue;
+        }
+
+        if (!clients[i].handshake_complete) {
+            if (!handle_handshake(clients[i])) {
+                remove_client(i);
+                continue;
+            }
+            clients[i].handshake_complete = true;
+            continue;
+        }
+
+        std::vector<uint8_t> frame_buffer(BUFFER_SIZE);
+        ssize_t bytes_read = ::recv(clients[i].fd, frame_buffer.data(), frame_buffer.size(), 0);
+        
+        if (bytes_read <= 0) {
+            remove_client(i);
+            continue;
+        }
+
+        frame_buffer.resize(bytes_read);
+        bool is_text;
+        std::vector<uint8_t> payload = parse_websocket_frame(frame_buffer, is_text);
+        
+        if (payload.empty()) {
+            continue;
+        }
+
+        size_t copy_size = std::min(size, payload.size());
+        memcpy(buffer, payload.data(), copy_size);
+        return copy_size;
+    }
+
+    return -1;
+}
+
+void JSONWebSocket::close() {
+    // Close all client connections
+    for (size_t i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active) {
+            remove_client(i);
+        }
+    }
+
+    // Close server socket
+    if (server_fd >= 0) {
+        ::close(server_fd);
+        server_fd = -1;
+    }
 }
 
 std::vector<uint8_t> JSONWebSocket::parse_websocket_frame(const std::vector<uint8_t>& data, bool& is_text) {
@@ -321,91 +497,6 @@ std::vector<uint8_t> JSONWebSocket::create_websocket_frame(const std::vector<uin
 
     frame.insert(frame.end(), payload.begin(), payload.end());
     return frame;
-}
-
-ssize_t JSONWebSocket::send(const void* buffer, size_t size) {
-    if (client_fd < 0) {
-        sockaddr_in client_addr;
-        socklen_t client_len = sizeof(client_addr);
-        client_fd = accept(server_fd, reinterpret_cast<struct sockaddr*>(&client_addr), &client_len);
-        
-        if (client_fd < 0) {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                printf("Failed to accept WebSocket client connection\n");
-            }
-            return -1;
-        }
-
-        printf("WebSocket client connected\n");
-        if (!handle_handshake()) {
-            printf("WebSocket handshake failed\n");
-            ::close(client_fd);
-            client_fd = -1;
-            return -1;
-        }
-    }
-
-    std::vector<uint8_t> payload(static_cast<const uint8_t*>(buffer), 
-                                static_cast<const uint8_t*>(buffer) + size);
-    std::vector<uint8_t> frame = create_websocket_frame(payload, false);
-    return ::send(client_fd, frame.data(), frame.size(), 0);
-}
-
-ssize_t JSONWebSocket::recv(void* buffer, size_t size, uint32_t timeout_ms) {
-    if (client_fd < 0) {
-        return -1;
-    }
-
-    fd_set fds;
-    struct timeval tv;
-    
-    FD_ZERO(&fds);
-    FD_SET(client_fd, &fds);
-
-    tv.tv_sec = timeout_ms / 1000;
-    tv.tv_usec = (timeout_ms % 1000) * 1000;
-
-    int ret = select(client_fd + 1, &fds, nullptr, nullptr, &tv);
-    if (ret <= 0) {
-        return ret;
-    }
-
-    std::vector<uint8_t> frame_buffer(BUFFER_SIZE);
-    ssize_t bytes_read = ::recv(client_fd, frame_buffer.data(), frame_buffer.size(), 0);
-    
-    if (bytes_read <= 0) {
-        if (bytes_read < 0) {
-            printf("WebSocket receive failed\n");
-        } else {
-            printf("WebSocket connection closed by peer\n");
-        }
-        ::close(client_fd);
-        client_fd = -1;
-        return bytes_read;
-    }
-
-    frame_buffer.resize(bytes_read);
-    bool is_text;
-    std::vector<uint8_t> payload = parse_websocket_frame(frame_buffer, is_text);
-    
-    if (payload.empty()) {
-        return -1;
-    }
-
-    size_t copy_size = std::min(size, payload.size());
-    memcpy(buffer, payload.data(), copy_size);
-    return copy_size;
-}
-
-void JSONWebSocket::close() {
-    if (client_fd >= 0) {
-        ::close(client_fd);
-        client_fd = -1;
-    }
-    if (server_fd >= 0) {
-        ::close(server_fd);
-        server_fd = -1;
-    }
 }
 
 #endif // HAL_SIM_WEBSOCKET_ENABLED

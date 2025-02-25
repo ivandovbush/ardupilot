@@ -196,7 +196,7 @@ void JSON::output_servos(const struct sitl_input &input)
     }
 
     if ((size_t)send_ret != pkt_size) {
-        if (send_ret <= 0) {
+        if (send_ret < -1) {
             printf("Unable to send servo output to %s:%u - Error: %s, Return value: %ld (transport: %s)\n",
                    target_ip, control_port, strerror(errno), (long)send_ret,
                    transport_type == TransportType::UDP ? "UDP" : "WebSocket");
