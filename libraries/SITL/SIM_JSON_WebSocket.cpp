@@ -278,21 +278,95 @@ void JSONWebSocket::check_new_connections() {
 }
 
 bool JSONWebSocket::handle_handshake(ClientInfo& client) {
-    char buffer[MAX_HEADER_SIZE];
-    ssize_t bytes_read = ::recv(client.fd, buffer, sizeof(buffer)-1, 0);
-    if (bytes_read <= 0) {
+    std::vector<char> buffer;
+    buffer.reserve(MAX_HEADER_SIZE);
+    buffer.resize(MAX_HEADER_SIZE);
+    
+    size_t total_bytes = 0;
+    const char* end_marker = "\r\n\r\n";  // End of HTTP headers
+    const size_t end_marker_len = strlen(end_marker);
+    bool headers_complete = false;
+    
+    // Keep reading until we get the full headers
+    while (total_bytes < MAX_HEADER_SIZE) {
+        ssize_t bytes_read = ::recv(client.fd, buffer.data() + total_bytes, 
+                                  buffer.size() - total_bytes, 0);
+        
+        if (bytes_read < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // No data available right now, try again
+                continue;
+            }
+            printf("Error reading handshake data: %s\n", strerror(errno));
+            return false;
+        }
+        
+        if (bytes_read == 0) {
+            printf("Client closed connection during handshake\n");
+            return false;
+        }
+        
+        total_bytes += bytes_read;
+        buffer[total_bytes] = '\0';  // Null terminate for string operations
+        
+        // Check if we have the complete headers
+        if (memmem(buffer.data(), total_bytes, end_marker, end_marker_len) != nullptr) {
+            headers_complete = true;
+            break;
+        }
+        
+        // If buffer is full but no end marker, headers are too large
+        if (total_bytes >= MAX_HEADER_SIZE - 1) {
+            printf("WebSocket headers too large (> %zu bytes)\n", MAX_HEADER_SIZE);
+            return false;
+        }
+        
+        // Ensure we have room for more data
+        if (total_bytes + 1024 > buffer.size()) {
+            buffer.resize(buffer.size() + MAX_HEADER_SIZE);
+        }
+    }
+    
+    if (!headers_complete) {
+        printf("Failed to receive complete WebSocket headers\n");
         return false;
     }
-    buffer[bytes_read] = '\0';
 
-    std::string request(buffer);
-    size_t key_start = request.find("Sec-WebSocket-Key: ") + 19;
+    std::string request(buffer.data(), total_bytes);
+    
+    // Check for required WebSocket headers
+    if (request.find("GET") == std::string::npos ||
+        request.find("Upgrade: websocket") == std::string::npos ||
+        request.find("Connection: Upgrade") == std::string::npos) {
+        printf("Missing required WebSocket headers\n");
+        return false;
+    }
+
+    // Find the WebSocket key more robustly
+    const char* key_header = "Sec-WebSocket-Key: ";
+    size_t key_start = request.find(key_header);
+    if (key_start == std::string::npos) {
+        printf("WebSocket key header not found\n");
+        return false;
+    }
+    key_start += strlen(key_header);
+    
+    // Find the end of the key (will be terminated by \r\n)
     size_t key_end = request.find("\r\n", key_start);
-    if (key_start == std::string::npos || key_end == std::string::npos) {
+    if (key_end == std::string::npos) {
+        printf("WebSocket key not properly terminated\n");
         return false;
     }
 
     std::string client_key = request.substr(key_start, key_end - key_start);
+    // Remove any potential whitespace
+    client_key.erase(std::remove_if(client_key.begin(), client_key.end(), ::isspace), client_key.end());
+    
+    if (client_key.empty()) {
+        printf("Empty WebSocket key\n");
+        return false;
+    }
+
     std::string accept_key = generate_websocket_accept(client_key);
 
     std::string response = 
@@ -301,7 +375,29 @@ bool JSONWebSocket::handle_handshake(ClientInfo& client) {
         "Connection: Upgrade\r\n"
         "Sec-WebSocket-Accept: " + accept_key + "\r\n\r\n";
 
-    return ::send(client.fd, response.c_str(), response.length(), 0) > 0;
+    // Send the response, handling partial writes
+    size_t total_sent = 0;
+    const char* response_data = response.c_str();
+    const size_t response_len = response.length();
+    
+    while (total_sent < response_len) {
+        ssize_t sent = ::send(client.fd, response_data + total_sent, 
+                            response_len - total_sent, 0);
+        if (sent < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                continue;
+            }
+            printf("Failed to send WebSocket handshake response: %s\n", strerror(errno));
+            return false;
+        }
+        if (sent == 0) {
+            printf("Client closed connection while sending handshake response\n");
+            return false;
+        }
+        total_sent += sent;
+    }
+    
+    return true;
 }
 
 void JSONWebSocket::remove_client(size_t client_idx) {
