@@ -309,10 +309,10 @@ void JSON::recv_fdm(const struct sitl_input &input)
     }
 #if HAL_SIM_WEBSOCKET_ENABLED
     else if (websock != nullptr) {
-        printf("Attempting to receive data via WebSocket...\n");
+        //printf("Attempting to receive data via WebSocket...\n");
         ret = websock->recv(&sensor_buffer[sensor_buffer_len], sizeof(sensor_buffer)-sensor_buffer_len, UDP_TIMEOUT_MS);
         if (ret <= 0) {
-            printf("WebSocket receive failed with ret=%zd\n", ret);
+            //printf("WebSocket receive failed with ret=%zd\n", ret);
         } else {
             printf("WebSocket received %zd bytes\n", ret);
         }
@@ -361,6 +361,7 @@ void JSON::recv_fdm(const struct sitl_input &input)
     if (received_bitmask == 0) {
         // did not receive one of the mandatory fields
         printf("Did not contain all mandatory fields\n");
+        printf("received data: %s\n", sensor_buffer);
         return;
     }
 
