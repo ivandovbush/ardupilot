@@ -82,7 +82,7 @@ const AP_Param::GroupInfo SIM::GPSParms::var_info[] = {
 
     // @Param: DRFTALT
     // @DisplayName: GPS Altitude Drift
-    // @Description: GPS altitude drift error
+    // @Description: GPS altitude drift error. Sine wave amplitude. Frequency is 0.5 Hz.
     // @Units: m
     // @User: Advanced
     AP_GROUPINFO("DRFTALT",   8, GPSParms, drift_alt, 0),
@@ -96,7 +96,7 @@ const AP_Param::GroupInfo SIM::GPSParms::var_info[] = {
 
     // @Param: NOISE
     // @DisplayName: GPS Noise
-    // @Description: Amplitude of the GPS altitude error
+    // @Description: Amplitude of the GPS altitude error (amplitude in meters of a sine wave with a frequency of 0.02 Hz)
     // @Units: m
     // @User: Advanced
     AP_GROUPINFO("NOISE",     10, GPSParms, noise, 0),
