@@ -1098,6 +1098,34 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
                 break
         if m is None:
             raise NotAchievedException("Did not get good TEMP message")
+        
+    def IgnoreGPSDrift(self):
+        """Without GPS navigation, enable input of VISION_POSITION_DELTA."""
+
+        self.customise_SITL_commandline(["--serial5=sim:vicon:"])
+
+        # configure EKF to use external nav instead of GPS
+        self.set_parameters({
+            "EK3_SRC1_POSXY": 3,
+            "EK3_SRC1_VELXY": 6,
+            "EK3_SRC1_POSZ": 1,
+            "EK3_SRC1_VELZ": 6,
+            "VISO_TYPE": 1,
+            "SERIAL5_PROTOCOL": 1,
+            "SIM_GPS1_DRFTALT": 3,
+            "SIM_VICON_TMASK": 8,  # send VISION_POSITION_DELTA
+        })
+        self.reboot_sitl()
+      
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+        self.change_mode('POSHOLD')
+        self.watch_altitude_maintained(delta=0.3, timeout=20.0)
+        self.delay_sim_time(10)
+        self.disarm_vehicle()
+
+        if not self.current_onboard_log_contains_message("XKFD"):
+            raise NotAchievedException("Did not find expected XKFD message")
 
     def tests(self):
         '''return list of all tests'''
@@ -1135,6 +1163,7 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
             self.INA3221,
             self.PosHoldBounceBack,
             self.SHT3X,
+            self.IgnoreGPSDrift,
         ])
 
         return ret
