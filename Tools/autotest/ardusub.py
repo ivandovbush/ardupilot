@@ -120,6 +120,33 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
                     "Altitude not maintained: want %.2f (+/- %.2f) got=%.2f" %
                     (previous_altitude, delta, m.alt))
 
+
+    def watch_position_maintained(self, delta=0.3, timeout=5.0):
+        """Watch and wait for the actual position to be maintained
+
+        Keyword Arguments:
+            delta {float} -- Maximum distance allows in meters
+            timeout {float} -- Timeout time in simulation seconds (default: {5.0})
+
+        Raises:
+            NotAchievedException: Exception when position fails to hold inside the time and
+                position range
+        """
+        tstart = self.get_sim_time_cached()
+        previous_position = self.assert_receive_message('SIMSTATE')
+
+        self.progress('Position to be watched: (%f, %f)' % (previous_position.lat, previous_position.lng))
+        while True:
+            m = self.assert_receive_message('SIMSTATE')
+            if self.get_sim_time_cached() - tstart > timeout:
+                self.progress('Position hold done')
+                return
+            if self.get_distance_int(previous_position, m) > delta:
+                raise NotAchievedException(
+                    "Position not maintained: got %f meters too far from the previous position after %f seconds " %
+                    (self.get_distance_int(previous_position, m), self.get_sim_time_cached() - tstart))
+
+
     def AltitudeHold(self):
         """Test ALT_HOLD mode"""
         self.wait_ready_to_arm()
@@ -1113,14 +1140,17 @@ class AutoTestSub(vehicle_test_suite.TestSuite):
             "VISO_TYPE": 1,
             "SERIAL5_PROTOCOL": 1,
             "SIM_GPS1_DRFTALT": 3,
+            "SIM_GPS1_ACC": 0.3,
             "SIM_VICON_TMASK": 8,  # send VISION_POSITION_DELTA
         })
+        self.disarm_vehicle()
         self.reboot_sitl()
       
         self.wait_ready_to_arm()
         self.arm_vehicle()
         self.change_mode('POSHOLD')
-        self.watch_altitude_maintained(delta=0.3, timeout=20.0)
+        self.set_parameter("SIM_GPS1_ACC", 1)
+        self.watch_position_maintained(delta=0.3, timeout=20.0)
         self.delay_sim_time(10)
         self.disarm_vehicle()
 

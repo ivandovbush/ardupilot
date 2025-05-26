@@ -719,6 +719,7 @@ void NavEKF3_core::FuseVelPosNED()
             const bool extNavUsedForVel = extNavVelToFuse && frontend->sources.useVelXYSource(AP_NavEKF_Source::SourceXY::EXTNAV);
             if (extNavUsedForVel) {
                 R_OBS[2] = R_OBS[0] = sq(constrain_ftype(extNavVelDelayed.err, 0.05f, 50.0f));
+                printf("using the correct noise for extnav vel\n");
             } else
 #endif
             if (gpsSpdAccuracy > 0.0f) {
