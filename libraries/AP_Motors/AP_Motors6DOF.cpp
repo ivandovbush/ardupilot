@@ -178,7 +178,7 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
     case SUB_FRAME_CUSTOM:
         _frame_class_string = "CUSTOM"; // add frame class string representation
         add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,                 0,           0,                  1.0f,                 0,            1); // main
-        add_motor_raw_6dof(AP_MOTORS_MOT_2,     0,              0,                 1.0f,        0,                  0,                    0,            2); // horizontal
+        add_motor_raw_6dof(AP_MOTORS_MOT_2,     0,              0,                 -1.0f,        0,                  0,                    0,            2); // horizontal
         add_motor_raw_6dof(AP_MOTORS_MOT_3,     0,              1.0f,              0,           0,                  0,                    0,            3); // vertical
         break;
 
