@@ -188,7 +188,7 @@ elif [ ${RELEASE_CODENAME} == 'groovy' ] || [ ${RELEASE_CODENAME} == 'hirsute' ]
     BASE_PKGS+=" python-is-python3"
     SITL_PKGS+=" libpython3-stdlib" # for argparse
 else
-  SITL_PKGS+=" python-argparse"
+#   SITL_PKGS+=" python-argparse"
 fi
 
 # Check for graphical package for MAVProxy
