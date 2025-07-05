@@ -156,10 +156,10 @@ fi
 ARM_LINUX_PKGS="g++-arm-linux-gnueabihf $INSTALL_PKG_CONFIG"
 # python-wxgtk packages are added to SITL_PKGS below
 
-if [ ${RELEASE_CODENAME} == 'bookworm' ] ||
-   [ ${RELEASE_CODENAME} == 'lunar' ] ||
-   [ ${RELEASE_CODENAME} == 'mantic' ]; ||
-   [ ${RELEASE_CODENAME} == 'mantic' ] ||
+if [ ${RELEASE_CODENAME} == 'bookworm' ] || \
+   [ ${RELEASE_CODENAME} == 'lunar' ] || \
+   [ ${RELEASE_CODENAME} == 'mantic' ]; || \
+   [ ${RELEASE_CODENAME} == 'mantic' ] || \
    [ ${RELEASE_CODENAME} == 'noble' ]; then
     # on Lunar (and presumably later releases), we install in venv, below
     PYTHON_PKGS+=" numpy pyparsing psutil"
@@ -169,10 +169,10 @@ SITL_PKGS="libtool libxml2-dev libxslt1-dev ${PYTHON_V}-dev ${PYTHON_V}-pip ${PY
 fi
 # add some packages required for commonly-used MAVProxy modules:
 if [[ $SKIP_AP_GRAPHIC_ENV -ne 1 ]]; then
-    if [ ${RELEASE_CODENAME} == 'bookworm' ] ||
-       [ ${RELEASE_CODENAME} == 'lunar' ] ||
-       [ ${RELEASE_CODENAME} == 'mantic' ] ||
-       [ ${RELEASE_CODENAME} == 'mantic' ] ||
+    if [ ${RELEASE_CODENAME} == 'bookworm' ] || \
+       [ ${RELEASE_CODENAME} == 'lunar' ] || \
+       [ ${RELEASE_CODENAME} == 'mantic' ] || \
+       [ ${RELEASE_CODENAME} == 'mantic' ] || \
        [ ${RELEASE_CODENAME} == 'noble' ]; then
         PYTHON_PKGS+=" matplotlib scipy opencv-python pyyaml"
         SITL_PKGS+=" xterm libcsfml-dev libcsfml-audio${SITLCFML_VERSION} libcsfml-dev libcsfml-graphics${SITLCFML_VERSION} libcsfml-network${SITLCFML_VERSION} libcsfml-system${SITLCFML_VERSION} libcsfml-window${SITLCFML_VERSION} libsfml-audio${SITLFML_VERSION} libsfml-dev libsfml-graphics${SITLFML_VERSION} libsfml-network${SITLFML_VERSION} libsfml-system${SITLFML_VERSION} libsfml-window${SITLFML_VERSION}"
