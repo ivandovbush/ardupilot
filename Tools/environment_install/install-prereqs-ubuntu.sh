@@ -158,7 +158,7 @@ ARM_LINUX_PKGS="g++-arm-linux-gnueabihf $INSTALL_PKG_CONFIG"
 
 if [ ${RELEASE_CODENAME} == 'bookworm' ] ||
    [ ${RELEASE_CODENAME} == 'lunar' ] ||
-   [ ${RELEASE_CODENAME} == 'mantic' ]; then
+   [ ${RELEASE_CODENAME} == 'mantic' ]; ||
    [ ${RELEASE_CODENAME} == 'mantic' ] ||
    [ ${RELEASE_CODENAME} == 'noble' ]; then
     # on Lunar (and presumably later releases), we install in venv, below
@@ -171,7 +171,7 @@ fi
 if [[ $SKIP_AP_GRAPHIC_ENV -ne 1 ]]; then
     if [ ${RELEASE_CODENAME} == 'bookworm' ] ||
        [ ${RELEASE_CODENAME} == 'lunar' ] ||
-       [ ${RELEASE_CODENAME} == 'mantic' ]; then
+       [ ${RELEASE_CODENAME} == 'mantic' ] ||
        [ ${RELEASE_CODENAME} == 'mantic' ] ||
        [ ${RELEASE_CODENAME} == 'noble' ]; then
         PYTHON_PKGS+=" matplotlib scipy opencv-python pyyaml"
