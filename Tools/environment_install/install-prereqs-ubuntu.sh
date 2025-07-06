@@ -187,6 +187,9 @@ if [ ${RELEASE_CODENAME} == 'focal' ] || [ ${RELEASE_CODENAME} == 'ulyssa' ]; th
 elif [ ${RELEASE_CODENAME} == 'groovy' ] || [ ${RELEASE_CODENAME} == 'hirsute' ]; then
     BASE_PKGS+=" python-is-python3"
     SITL_PKGS+=" libpython3-stdlib" # for argparse
+elif [ ${RELEASE_CODENAME} == 'jammy' ]; then
+    BASE_PKGS+=" python-is-python3"
+    SITL_PKGS+=" libpython3-stdlib"
 else
   SITL_PKGS+=" python-argparse"
 fi
@@ -200,7 +203,7 @@ if [[ $SKIP_AP_GRAPHIC_ENV -ne 1 ]]; then
     SITL_PKGS+=" python3-wxgtk4.0"
     SITL_PKGS+=" fonts-freefont-ttf libfreetype6-dev libjpeg8-dev libpng16-16 libportmidi-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsdl1.2-dev"  # for pygame
   elif apt-cache search python-wxgtk3.0 | grep wx; then
-      SITL_PKGS+=" python-wxgtk3.0"
+      SITL_PKGS+=" python-wxgtk3.0"n
   else
       # we only support back to trusty:
       SITL_PKGS+=" python-wxgtk2.8"
