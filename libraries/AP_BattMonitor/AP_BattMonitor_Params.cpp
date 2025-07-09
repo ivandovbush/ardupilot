@@ -37,8 +37,8 @@ const AP_Param::GroupInfo AP_BattMonitor_Params::var_info[] = {
     // @Param: VOLT_MULT
     // @DisplayName: Voltage Multiplier
     // @Description: Used to convert the voltage of the voltage sensing pin (@PREFIX@VOLT_PIN) to the actual battery's voltage (pin_voltage * VOLT_MULT). For the 3DR Power brick with a Pixhawk, this should be set to 10.1. For the Pixhawk with the 3DR 4in1 ESC this should be 12.02. For the PX using the PX4IO power supply this should be set to 1.
-    // @User: Advanced
-    AP_GROUPINFO("VOLT_MULT", 4, AP_BattMonitor_Params, _volt_multiplier, AP_BATT_VOLTDIVIDER_DEFAULT),
+    // @User: Advanced, previous variable: AP_BATT_VOLTDIVIDER_DEFAULT
+    AP_GROUPINFO("VOLT_MULT", 4, AP_BattMonitor_Params, _volt_multiplier, 15.7f),
 
     // @Param: AMP_PERVLT
     // @DisplayName: Amps per volt
@@ -60,7 +60,7 @@ const AP_Param::GroupInfo AP_BattMonitor_Params::var_info[] = {
     // @Units: mAh
     // @Increment: 50
     // @User: Standard
-    AP_GROUPINFO("CAPACITY", 7, AP_BattMonitor_Params, _pack_capacity, 3300),
+    AP_GROUPINFO("CAPACITY", 7, AP_BattMonitor_Params, _pack_capacity, 10000),
 
     // @Param{Plane}: WATT_MAX
     // @DisplayName: Maximum allowed power (Watts)
